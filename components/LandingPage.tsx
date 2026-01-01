@@ -65,8 +65,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
       {/* Navigation */}
       <nav className="relative z-50 flex items-center justify-between px-8 py-6 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-2">
-           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-900/50">S</div>
-           <span className="font-bold text-xl tracking-tight">Safe on Set</span>
+           {/* Logo changed to T for Trustory */}
+           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white shadow-lg shadow-blue-900/50">T</div>
+           <span className="font-bold text-xl tracking-tight">Trustory</span>
         </div>
 
         <div className="flex items-center gap-6">
@@ -94,6 +95,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
 
       {/* Hero Section */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center max-w-4xl mx-auto pt-10 pb-20">
+         {/* Product Badge remains Safe on Set */}
          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-wider mb-6 animate-fade-in">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> {t.appSub}
          </div>
@@ -198,7 +200,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
                <button onClick={() => setActiveModal('terms')} className="cursor-pointer hover:text-slate-300 transition-colors">Terms of Service</button>
                <button onClick={() => setActiveModal('imprint')} className="cursor-pointer hover:text-slate-300 transition-colors">{t.imprTitle}</button>
           </div>
-          <p>© 2025 Safe on Set GmbH. All rights reserved.</p>
+          <p>© 2025 Trustory GmbH. All rights reserved.</p>
       </footer>
 
       {activeModal !== 'none' && (

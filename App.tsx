@@ -193,7 +193,7 @@ function App() {
   if (view === 'admin-dashboard') return <AdminDashboard lang={lang} onLogout={handleLogout} productions={productions} onAddProduction={handleAddProduction} onInvite={handleInvite} onUpdateProduction={handleUpdateProduction} />;
   if (view === 'admin-login') return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
-       <div className="w-full max-w-sm bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
+       <div className="w-full max-sm bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
            <button onClick={() => setView('login')} className="mb-6 text-slate-400 hover:text-white flex items-center gap-2 text-sm"><ArrowLeft size={16} /> Back</button>
            <h2 className="text-2xl font-bold mb-6">{t.adminLogin}</h2>
            <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
@@ -236,7 +236,8 @@ function App() {
              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center font-bold text-sm shadow-lg shadow-blue-500/20 text-white border border-white/10">{memberDetails?.name ? memberDetails.name.charAt(0) : 'PM'}</div>
           </div>
           <button onClick={() => { setActiveModal('settings'); setSettingsTab('schedule'); }} className="text-slate-400 hover:text-white transition-colors"><Settings size={20} /></button>
-          <button onClick={handleLogout} className="text-slate-400 hover:text-white transition-colors text-sm font-medium flex items-center gap-2"><LogOut size={16} />{t.logout}</button>
+          {/* Fix: removed non-standard handleLogout attribute */}
+          <button className="text-slate-400 hover:text-white transition-colors text-sm font-medium flex items-center gap-2" onClick={handleLogout}><LogOut size={16} />{t.logout}</button>
         </div>
       </header>
 
@@ -245,7 +246,7 @@ function App() {
       </main>
 
       <footer className="h-[40px] shrink-0 bg-slate-900/40 border-t border-white/5 flex justify-between items-center px-8 text-[10px] uppercase tracking-widest text-slate-600 backdrop-blur-md z-40">
-        <div>© 2025 Safe on Set GmbH</div>
+        <div>© 2025 Trustory GmbH</div>
         <button onClick={() => setActiveModal('impressum')} className="hover:text-slate-400 transition-colors">{t.imprBtn}</button>
       </footer>
 

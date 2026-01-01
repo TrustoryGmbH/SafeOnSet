@@ -2,7 +2,6 @@
 import { Translation, Language, Production } from './types';
 
 export const TRANSLATIONS: Record<Language, Translation> = {
-  // ... (Die Übersetzungen bleiben gleich wie im vorherigen Turn)
   en: {
     appSub: "Safe on Set",
     role: "Production Manager",
@@ -33,11 +32,11 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     explText80: "Immediate action required - multiple negative feedbacks received.",
     imprBtn: "Legal Notice",
     imprTitle: "Legal Notice",
-    imprText: "Information according to § 5 TMG:\n\nSafe on Set GmbH\nRathausgasse 5\n12529 Schönefeld\nGermany\n\nRepresented by:\nMax Mustermann\n\nContact:\nPhone: +49 (0) 3379 9976627\nEmail: info@safe-on-set.com\n\nRegister Entry:\nEntry in the Commercial Register.\nRegister Court: Amtsgericht Cottbus\nRegister Number: HRB 12345\n\nVAT ID:\nSales tax identification number according to §27 a sales tax law:\nDE 123456789",
+    imprText: "Information according to § 5 TMG:\n\nTrustory GmbH\nRathausgasse 5\n12529 Schönefeld\nGermany\n\nRepresented by:\nMax Mustermann\n\nContact:\nPhone: +49 (0) 3379 9976627\nEmail: info@safe-on-set.com\n\nRegister Entry:\nEntry in the Commercial Register.\nRegister Court: Amtsgericht Cottbus\nRegister Number: HRB 12345\n\nVAT ID:\nSales tax identification number according to §27 a sales tax law:\nDE 123456789",
     privacyTitle: "Privacy Policy",
-    privacyText: "1. Data Protection at a Glance\n\nGeneral Information\nThe following notes provide a simple overview of what happens to your personal data when you visit this website. Personal data is all data with which you can be personally identified.\n\nData Collection on this Website\nWho is responsible for data collection on this website?\nThe data processing on this website is carried out by the website operator. You can find their contact details in the section \"Information on the Responsible Party\" in this privacy policy.\n\nHow do we collect your data?\nYour data is collected when you provide it to us. This can be, for example, data you enter in a contact form. Other data is collected automatically or after your consent when visiting the website by our IT systems. This is mainly technical data (e.g., internet browser, operating system, or time of page view).\n\n2. Hosting\nWe host the content of our website with the following provider: AWS (Germany).",
+    privacyText: "1. Data Protection at a Glance\n\nGeneral Information\nThe following notes provide a simple overview of what happens to your personal data when you visit this website. Personal data is all data with which you can be personally identified.\n\nData Collection on this Website\nWho is responsible for data collection on this website?\nThe data processing on this website is carried out by the website operator: Trustory GmbH. You can find their contact details in the section \"Information on the Responsible Party\" in this privacy policy.\n\nHow do we collect your data?\nYour data is collected when you provide it to us. This can be, for example, data you enter in a contact form. Other data is collected automatically or after your consent when visiting the website by our IT systems. This is mainly technical data (e.g., internet browser, operating system, or time of page view).\n\n2. Hosting\nWe host the content of our website with the following provider: AWS (Germany).",
     termsTitle: "Terms of Service",
-    termsText: "1. Scope\nThese General Terms and Conditions (GTC) apply to all business relationships between Safe on Set GmbH (hereinafter: Provider) and its customers.\n\n2. Subject of the Contract\nThe Provider offers a SaaS solution for mood tracking in film productions. The exact scope of services is derived from the current service description on the website.\n\n3. Registration & Access\nUse requires registration. The customer is obliged to provide truthful information. Access data must be kept secret.\n\n4. Data Protection & Confidentiality\nThe Provider undertakes to treat all transmitted data confidentially and to use it exclusively for the purpose of fulfilling the contract.\n\n5. Limitation of Liability\nThe Provider is liable for intent and gross negligence. Liability for slight negligence is excluded, provided that no essential contractual obligations are violated.",
+    termsText: "1. Scope\nThese General Terms and Conditions (GTC) apply to all business relationships between Trustory GmbH (hereinafter: Provider) and its customers for the product \"Safe on Set\".\n\n2. Subject of the Contract\nThe Provider offers a SaaS solution for mood tracking in film productions. The exact scope of services is derived from the current service description on the website.\n\n3. Registration & Access\nUse requires registration. The customer is obliged to provide truthful information. Access data must be kept secret.\n\n4. Data Protection & Confidentiality\nThe Provider undertakes to treat all transmitted data confidentially and to use it exclusively for the purpose of fulfilling the contract.\n\n5. Limitation of Liability\nThe Provider is liable for intent and gross negligence. Liability for slight negligence is excluded, provided that no essential contractual obligations are violated.",
     votingClosed: "Voting Closed",
     votingClosedDesc: "Today is not a scheduled shooting day.",
     btnPositive: "EVERYTHING IS FINE",
@@ -175,11 +174,11 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     explText80: "Sofortige Aktion erforderlich.",
     imprBtn: "Impressum",
     imprTitle: "Impressum",
-    imprText: "Angaben gemäß § 5 TMG:\n\nSafe on Set GmbH\nRathausgasse 5\n12529 Schönefeld\nDeutschland\n\nVertreten durch:\nMax Mustermann\n\nKontakt:\nTelefon: +49 (0) 3379 9976627\nE-Mail: info@safe-on-set.com",
+    imprText: "Angaben gemäß § 5 TMG:\n\nTrustory GmbH\nRathausgasse 5\n12529 Schönefeld\nDeutschland\n\nRepresented by:\nMax Mustermann\n\nKontakt:\nTelefon: +49 (0) 3379 9976627\nE-Mail: info@safe-on-set.com\n\nRegistereintrag:\nEintragung im Handelsregister.\nRegistergericht: Amtsgericht Cottbus\nRegisternummer: HRB 12345",
     privacyTitle: "Datenschutzerklärung",
-    privacyText: "Datenschutzhinweise für Safe on Set.",
+    privacyText: "Datenschutzhinweise für das Produkt Safe on Set der Trustory GmbH.",
     termsTitle: "AGB",
-    termsText: "Allgemeine Geschäftsbedingungen von Safe on Set.",
+    termsText: "Allgemeine Geschäftsbedingungen der Trustory GmbH für Safe on Set.",
     votingClosed: "Abstimmung Geschlossen",
     votingClosedDesc: "Heute ist kein geplanter Drehtag.",
     btnPositive: "ALLES IN ORDNUNG",
@@ -317,7 +316,7 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     explText80: "مطلوب إجراء فوري - تم استلام عدة تعليقات سلبية.",
     imprBtn: "إشعار قانوني",
     imprTitle: "إشعار قانوني",
-    imprText: "معلومات وفقًا لـ § 5 TMG...",
+    imprText: "Trustory GmbH",
     privacyTitle: "سياسة الخصوصية",
     privacyText: "1. حماية البيانات باختصار...",
     termsTitle: "شروط الخدمة",
