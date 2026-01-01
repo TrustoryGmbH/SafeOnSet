@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="https://lucide.dev/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trustory | Safe on Set</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              slate: {
+                850: '#151e32',
+                900: '#0f172a',
+                950: '#020617',
+              },
+              primary: '#3b82f6',
+              danger: '#ef4444',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              tajawal: ['Tajawal', 'sans-serif'],
+            },
+            keyframes: {
+              'zoom-in': {
+                '0%': { transform: 'scale(0)' },
+                '100%': { transform: 'scale(1)' },
+              },
+              'fade-in': {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              'float': {
+                '0%, 100%': { transform: 'translateY(0px)' },
+                '50%': { transform: 'translateY(-10px)' },
+              },
+              'blink': {
+                '0%, 90%, 100%': { transform: 'scaleY(1)' },
+                '95%': { transform: 'scaleY(0.1)' },
+              },
+              'shimmer-slide': {
+                '0%': { transform: 'translateX(-100%) skewX(-12deg)' },
+                '100%': { transform: 'translateX(200%) skewX(-12deg)' },
+              },
+              'spin-slow': {
+                '0%': { transform: 'rotate(0deg)' },
+                '100%': { transform: 'rotate(360deg)' },
+              }
+            },
+            animation: {
+              'zoom-in': 'zoom-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'fade-in': 'fade-in 0.8s ease-out forwards',
+              'float': 'float 5s ease-in-out infinite',
+              'blink': 'blink 4s infinite',
+              'shimmer-slide': 'shimmer-slide 2s linear infinite',
+              'spin-slow': 'spin-slow 12s linear infinite',
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            }
+          },
+        },
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      /* Custom Scrollbar for dark theme */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+      body {
+        background-color: #0f172a;
+        color: white;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.4",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "qrcode.react": "https://aistudiocdn.com/qrcode.react@^4.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
