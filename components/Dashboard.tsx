@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { TRANSLATIONS } from '../constants';
@@ -25,27 +26,22 @@ const Dashboard: React.FC<DashboardProps> = ({
   const qrRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   
-  // Animation state for bars to trigger "grow" effect on mount
   const [showBars, setShowBars] = useState(false);
-
-  // Popups for Language Selection
   const [activePopup, setActivePopup] = useState<'none' | 'pdf' | 'email'>('none');
 
   useEffect(() => {
-    // Capture canvas ref from QRCodeCanvas for PDF generation
     if (qrRef.current) {
         const canvas = qrRef.current.querySelector('canvas');
         if (canvas) canvasRef.current = canvas;
     }
-    // Trigger bar animation after mount
     const timer = setTimeout(() => setShowBars(true), 150);
     return () => clearTimeout(timer);
   }, []);
 
   const getColor = (s: number) => {
-    if (s >= 90) return '#22c55e'; // Green 500
-    if (s >= 60) return '#eab308'; // Yellow 500
-    return '#ef4444'; // Red 500
+    if (s >= 90) return '#22c55e'; 
+    if (s >= 60) return '#eab308'; 
+    return '#ef4444'; 
   };
 
   const getExplanation = () => {
@@ -57,7 +53,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   const explanation = getExplanation();
   const Icon = explanation.icon;
 
-  // Sort schedule desc
   const sortedSchedule = [...schedule].sort((a, b) => b.day - a.day).slice(0, 7);
 
   const handlePdfSelect = (l: Language) => {
@@ -66,7 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const handleEmailSelect = (l: Language) => {
-    onOpenEmail(); // Pass lang in real app
+    onOpenEmail(); 
     setActivePopup('none');
   };
 
@@ -85,7 +80,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             <span className="uppercase tracking-wide">{l}</span>
             </button>
         ))}
-        {/* Arrow at bottom */}
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 rotate-45 border-r border-b border-white/10"></div>
     </div>
   );
@@ -93,11 +87,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className={`grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-0 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl w-full max-w-6xl mx-auto h-[500px] relative overflow-hidden ring-1 ring-white/5 ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
       
-      {/* Column 1: Live Mood */}
       <div className={`flex flex-col h-full bg-gradient-to-b from-white/5 to-transparent ${lang === 'ar' ? 'border-l' : 'border-r'} border-white/5 relative group overflow-hidden`}>
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50"></div>
-        
-        {/* Background pulsing glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full blur-[80px] animate-pulse-slow pointer-events-none"></div>
 
         <div className="pt-6 px-6 pb-2 text-center relative z-10">
@@ -109,15 +100,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center relative">
-          
-          {/* Animated Smiley Container - Float */}
           <div className="relative z-10 scale-100 transition-transform duration-500 hover:scale-105 animate-float">
             <Smiley score={score} animate={true} size={110} />
           </div>
-          
           <div className="text-5xl font-black mt-6 text-white leading-none tracking-tight drop-shadow-lg animate-fade-in relative">
             {score}%
-            {/* Subtle reflection under text */}
             <div className="absolute top-full left-0 w-full text-5xl font-black text-white/5 blur-sm scale-y-[-0.5] pointer-events-none select-none">
                 {score}%
             </div>
@@ -135,7 +122,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Column 2: Trend History */}
       <div className="flex flex-col h-full bg-slate-900/20">
         <div className="pt-6 px-6 pb-4 flex justify-between items-end border-b border-white/5">
              <div className="text-[10px] font-black tracking-[3px] text-slate-500 uppercase flex items-center gap-2">
@@ -145,13 +131,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
         
         <div className="flex-1 flex flex-col overflow-hidden p-6 pt-2">
-          {/* Table Header */}
           <div className="flex justify-between px-3 py-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
              <span>Period</span>
              <span>Status</span>
           </div>
           
-          {/* List */}
           <ul className="flex-1 flex flex-col gap-1 overflow-y-auto custom-scrollbar pr-1">
             {sortedSchedule.map((item, idx) => {
               let dayScore = 100;
@@ -174,7 +158,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                    <div className="flex items-center gap-4 w-1/2">
                       <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden border border-white/5 relative">
-                        {/* Shimmer container */}
                         <div 
                           className={`h-full rounded-full relative transition-all duration-[1500ms] ease-out shadow-[0_0_10px_currentColor] overflow-hidden ${isToday ? 'animate-pulse' : ''}`} 
                           style={{ 
@@ -184,7 +167,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                               transitionDelay: `${idx * 100}ms`
                           }}
                         >
-                             {/* Shimmer Effect */}
                              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer-slide transform -skew-x-12" />
                         </div>
                       </div>
@@ -196,7 +178,6 @@ const Dashboard: React.FC<DashboardProps> = ({
           </ul>
         </div>
 
-        {/* Action Bar Middle */}
         <div className="p-4 border-t border-white/5 grid grid-cols-2 gap-3 bg-white/[0.02]">
            <button 
              onClick={onOpenInbox}
@@ -218,7 +199,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Column 3: Access */}
       <div className={`flex flex-col h-full bg-gradient-to-b from-white/5 to-transparent ${lang === 'ar' ? 'border-r' : 'border-l'} border-white/5`}>
         <div className="pt-6 px-6 pb-2 text-center">
              <div className="text-[10px] font-black tracking-[3px] text-slate-500 uppercase flex items-center justify-center gap-2">
@@ -231,7 +211,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex-1 flex flex-col items-center justify-center relative">
           <div className="bg-white p-4 pb-2 rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-transform hover:scale-105 duration-300" ref={qrRef}>
             <QRCodeCanvas 
-                value="https://trustory-demo.com" 
+                value="https://safe-on-set.com" 
                 size={130}
                 level={"H"}
                 bgColor="#FFFFFF"
@@ -243,7 +223,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         
         <div className="p-5">
             <div className="grid grid-cols-2 gap-3" onClick={() => activePopup !== 'none' && setActivePopup('none')}>
-                {/* PDF Button with Popup */}
                 <div className="relative">
                     {activePopup === 'pdf' && <LanguageMenu onSelect={handlePdfSelect} />}
                     <button 
@@ -255,7 +234,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                 </div>
 
-                {/* Email Button with Popup */}
                 <div className="relative">
                     {activePopup === 'email' && <LanguageMenu onSelect={handleEmailSelect} />}
                     <button 

@@ -1,6 +1,4 @@
 
-import { Buffer } from 'buffer';
-
 export const handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
@@ -13,12 +11,10 @@ export const handler = async (event) => {
     if (!apiKey) {
       return { 
         statusCode: 500, 
-        body: JSON.stringify({ error: "Resend API Key is missing." }) 
+        body: JSON.stringify({ error: { message: "RESEND_API_KEY fehlt in den Netlify Environment Variables." } }) 
       };
     }
 
-    // Die Domain safe-on-set.com ist nun verifiziert.
-    // Der Absender wurde auf info@safe-on-set.com gesetzt.
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -39,20 +35,21 @@ export const handler = async (event) => {
     if (response.ok) {
       return {
         statusCode: 200,
-        body: JSON.stringify({ message: "Email sent successfully", data }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ success: true, data }),
       };
     } else {
-      console.error("Resend Error Details:", data);
       return {
         statusCode: response.status,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ error: data }),
       };
     }
   } catch (error) {
-    console.error("Internal Server Error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: { message: error.message } }),
     };
   }
 };

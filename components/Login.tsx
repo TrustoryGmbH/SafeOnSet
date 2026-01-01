@@ -10,6 +10,8 @@ interface LoginProps {
   setLang: (l: Language) => void;
   onAdminClick: () => void;
   onRegister: (prod: Omit<Production, 'id' | 'status'>) => void;
+  onSendOTP: (email: string) => Promise<boolean>;
+  expectedOTP: string;
 }
 
 const COUNTRIES = [
@@ -45,7 +47,7 @@ const COUNTRIES = [
   { code: 'OTHER', name: 'Other / Sonstiges', flag: '🌍' },
 ];
 
-const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onRegister }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onRegister, onSendOTP, expectedOTP }) => {
   const t = TRANSLATIONS[lang];
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
@@ -70,27 +72,31 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
     trustContactInfo: ''
   });
 
-  const handleSendCode = (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.includes('@')) {
-      setError('Invalid email');
+      setError('Ungültige E-Mail-Adresse');
       return;
     }
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    setError('');
+    
+    const success = await onSendOTP(email);
+    
+    setIsLoading(false);
+    if (success) {
       setStep('otp');
-      setError('');
-    }, 1000);
+    } else {
+      // Error handling is mostly done via alerts in App.tsx
+    }
   };
 
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp === '123456') { // Mock OTP
+    if (otp === expectedOTP && otp !== '') { 
       onLogin(email);
     } else {
-      setError('Invalid Code. Try 123456');
+      setError('Falscher Code. Bitte überprüfe deine E-Mails.');
     }
   };
 
@@ -113,7 +119,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
       setRegSuccess(true);
   };
 
-  // Background ambient blobs
   const Background = () => (
     <>
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none mix-blend-screen animate-pulse" style={{ animationDuration: '4s' }} />
@@ -203,7 +208,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
              </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider ml-1">Verification Code</label>
+              <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider ml-1">Verifizierungscode</label>
               <input 
                 type="text" 
                 value={otp}
@@ -234,7 +239,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
         )}
       </div>
 
-      {/* Footer Admin Link */}
       <div className="absolute bottom-8 w-full flex justify-center gap-6 text-[10px] font-medium text-slate-600 uppercase tracking-widest">
         <span>© 2025 Trustory GmbH</span>
         <button onClick={onAdminClick} className="flex items-center gap-1 hover:text-slate-400 transition-colors">
