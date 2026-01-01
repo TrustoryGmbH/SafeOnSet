@@ -7,7 +7,7 @@ import MobileView from './components/MobileView';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import LandingPage from './components/LandingPage';
-import { LogOut, Settings, Phone, ArrowLeft, Calendar, FileText, MapPin, Building, Shield, User, Save, X, Check, Loader2 } from 'lucide-react';
+import { LogOut, ArrowLeft, X, Loader2, Inbox, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 function App() {
   const [lang, setLang] = useState<Language>('en');
@@ -19,11 +19,15 @@ function App() {
   const [schedule, setSchedule] = useState<ShootDay[]>(INITIAL_SCHEDULE);
   const [productions, setProductions] = useState<Production[]>(INITIAL_PRODUCTIONS);
 
+  // States für Deep-Linking
+  const [activeProdForFeedback, setActiveProdForFeedback] = useState<Production | null>(null);
+
   const [activeModal, setActiveModal] = useState<'none' | 'email' | 'inbox' | 'history' | 'settings' | 'impressum'>('none');
   const [adminPassword, setAdminPassword] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [generatedOTP, setGeneratedOTP] = useState<string>('');
   const [emailTarget, setEmailTarget] = useState('');
+  const [dnsStatus, setDnsStatus] = useState<'unknown' | 'pending' | 'verified'>('verified');
 
   useEffect(() => {
     const channel = new BroadcastChannel('safe-on-set_v1');
@@ -31,8 +35,21 @@ function App() {
       if (event.data.type === 'UPDATE') syncFromStorage();
     };
     syncFromStorage();
+    
+    // Deep-Link Check
+    const params = new URLSearchParams(window.location.search);
+    const prodId = params.get('prod');
+    if (prodId) {
+      // Wir suchen in den aktuellen Produktionen
+      const found = productions.find(p => p.id === prodId);
+      if (found) {
+        setActiveProdForFeedback(found);
+        setView('mobile');
+      }
+    }
+
     return () => channel.close();
-  }, []);
+  }, [productions]);
 
   const currentProduction = productions.find(p => p.email === currentUser || p.team?.some(m => m.email === currentUser));
   
@@ -65,49 +82,26 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, subject, html }),
       });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        return true;
-      } else {
-        const errorMsg = data.error?.message || data.error || "Fehler beim Senden";
-        if (errorMsg.includes("domain is not verified")) {
-          alert("Resend Fehler: Die Domain safe-on-set.com ist noch nicht verifiziert. Bitte schließe das DNS-Setup bei Netlify ab.");
-        } else {
-          alert(`Versandfehler: ${JSON.stringify(errorMsg)}`);
-        }
-        return false;
-      }
+      if (response.ok) return true;
+      return false;
     } catch (err) {
-      alert("Netzwerkfehler: Verbindung zum Email-Server fehlgeschlagen.");
       return false;
     } finally {
       setIsSendingEmail(false);
     }
   };
 
-  const handleSendOTP = async (email: string) => {
-    const userExists = productions.some(p => p.email === email || p.team?.some(m => m.email === email));
+  const handleResolveMessage = (id: string) => {
+    const newMsgs = messages.map(m => m.id === id ? { ...m, resolved: true } : m);
+    setMessages(newMsgs);
+    persistData('incidentMessages', newMsgs);
     
-    if (!userExists) {
-      alert("Diese E-Mail-Adresse ist keiner Produktion zugeordnet. Bitte registriere deine Produktion zuerst.");
-      return false;
+    const m = messages.find(m => m.id === id);
+    if (m && m.score > 50) {
+      const newNeg = Math.max(0, negVotes - 1);
+      setNegVotes(newNeg);
+      persistData('negVotes', newNeg.toString());
     }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOTP(otp);
-
-    return await sendEmailViaBackend(
-      email,
-      "Dein Safe on Set Login-Code",
-      `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:10px;max-width:500px;margin:auto;">
-        <h2 style="color:#2563eb;text-align:center;">Safe on Set Login</h2>
-        <p style="text-align:center;">Dein Verifizierungscode lautet:</p>
-        <div style="background:#f3f4f6;padding:20px;text-align:center;font-size:32px;font-weight:bold;letter-spacing:5px;border-radius:8px;margin:20px 0;">${otp}</div>
-        <p style="font-size:12px;color:#64748b;text-align:center;">Falls du diesen Code nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
-      </div>`
-    );
   };
 
   const handleMobileSubmit = (stressScore: number, messagePayload?: { text: string; contact: string; department?: string }) => {
@@ -122,7 +116,8 @@ function App() {
         text: messagePayload.text,
         contact: messagePayload.contact,
         score: stressScore,
-        department: messagePayload.department
+        department: messagePayload.department,
+        resolved: false
       });
     }
     persistData('negVotes', newNeg.toString());
@@ -133,157 +128,100 @@ function App() {
     setMessages(newMsgs);
   };
 
-  const handleProductionLogin = (email: string) => {
-    setCurrentUser(email);
-    setView('dashboard');
-  };
-
-  const handleAdminLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (adminPassword === 'TahmeeNils54321') { 
-        setView('admin-dashboard'); 
-        setAdminPassword(''); 
-    } else { 
-        alert('Falsches Passwort'); 
-    }
-  };
-
-  const handleAddProduction = (prod: Omit<Production, 'id' | 'status'>) => {
-    const newProd: Production = { ...prod, id: Date.now().toString(), status: 'Active', team: [] };
-    const newProds = [...productions, newProd];
-    setProductions(newProds);
-    persistData('productions', newProds);
-  };
-
-  const handleUpdateProduction = (id: string, updates: Partial<Production>) => {
-    const newProds = productions.map(p => p.id === id ? { ...p, ...updates } : p);
-    setProductions(newProds);
-    persistData('productions', newProds);
-  };
-
-  const handleInvite = async (id: string) => {
-    const prod = productions.find(p => p.id === id);
-    if (!prod) return;
-    const success = await sendEmailViaBackend(prod.email, "Willkommen bei Safe on Set", `<p>Deine Produktion ${prod.name} ist nun freigeschaltet.</p>`);
-    if (success) {
-      handleUpdateProduction(id, { status: 'Invited' });
-      alert("Einladung versendet!");
-    }
-  };
-
-  const handleLogout = () => { setCurrentUser(''); setView('landing'); };
-
   const score = totalVotes === 0 ? 100 : Math.max(0, 100 - (negVotes * 10));
   const t = TRANSLATIONS[lang];
 
   if (view === 'landing') return <LandingPage lang={lang} setLang={setLang} onLoginClick={() => setView('login')} onSimulateClick={() => setView('mobile')} />;
-  if (view === 'mobile') return <MobileView lang={lang} setLang={setLang} onSubmit={handleMobileSubmit} onBack={() => setView('landing')} schedule={schedule} />;
-  if (view === 'admin-dashboard') return <AdminDashboard lang={lang} onLogout={handleLogout} productions={productions} onAddProduction={handleAddProduction} onInvite={handleInvite} onUpdateProduction={handleUpdateProduction} />;
   
-  if (view === 'admin-login') return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#0f172a] text-white p-6 relative">
-       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
-       <div className="w-full max-w-md bg-slate-900/60 backdrop-blur-2xl p-10 rounded-[32px] shadow-2xl border border-white/10 relative z-10 mx-auto">
-           <button onClick={() => setView('login')} className="mb-8 text-slate-400 hover:text-white flex items-center gap-2 text-sm font-bold bg-white/5 px-4 py-2 rounded-full border border-white/5 transition-colors">
-              <ArrowLeft size={16} /> Zurück
-           </button>
-           <div className="text-center mb-10">
-              <h2 className="text-3xl font-black mb-2 tracking-tight">Admin Access</h2>
-              <p className="text-slate-500 text-xs uppercase tracking-widest font-bold">Secure Zone</p>
-           </div>
-           <form onSubmit={handleAdminLoginSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Password</label>
-                <input 
-                  type="password" 
-                  value={adminPassword} 
-                  onChange={e => setAdminPassword(e.target.value)} 
-                  placeholder="••••••••" 
-                  className="w-full p-4 bg-slate-950/50 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-center tracking-[0.3em]" 
-                  autoFocus 
-                />
-              </div>
-              <button type="submit" className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl shadow-xl shadow-blue-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">
-                Unlock Dashboard
-              </button>
-           </form>
-       </div>
+  if (view === 'mobile') return (
+    <MobileView 
+      lang={lang} 
+      setLang={setLang} 
+      onSubmit={handleMobileSubmit} 
+      onBack={() => {
+        // Parameter aus URL entfernen beim Zurückgehen
+        window.history.replaceState({}, '', window.location.pathname);
+        setView('landing');
+      }} 
+      schedule={schedule} 
+      productionName={activeProdForFeedback?.name || currentProduction?.name || "Safe on Set"}
+    />
+  );
+
+  if (view === 'admin-dashboard') return <AdminDashboard lang={lang} onLogout={() => {setCurrentUser(''); setView('landing');}} productions={productions} onAddProduction={()=>{}} onInvite={()=>{}} onUpdateProduction={()=>{}} />;
+  
+  if (view === 'login') return (
+    <div className="relative min-h-screen">
+        <Login 
+          onLogin={(email) => { setCurrentUser(email); setView('dashboard'); }} 
+          lang={lang} setLang={setLang} 
+          onAdminClick={() => setView('admin-login')} 
+          onRegister={()=>{}} 
+          onSendOTP={async (email) => { 
+            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+            setGeneratedOTP(otp);
+            return await sendEmailViaBackend(email, "Safe on Set Login", `<p>Code: <b>${otp}</b></p>`);
+          }}
+          expectedOTP={generatedOTP}
+        />
     </div>
   );
 
-  if (view === 'login') return (
-    <>
-        <button onClick={() => setView('landing')} className="fixed top-6 left-6 z-50 text-slate-500 hover:text-white flex items-center gap-2 text-sm font-bold bg-slate-900/50 p-2 px-4 rounded-full border border-white/5 backdrop-blur-md transition-colors"><ArrowLeft size={16} /> Home</button>
-        <Login 
-          onLogin={handleProductionLogin} 
-          lang={lang} 
-          setLang={setLang} 
-          onAdminClick={() => setView('admin-login')} 
-          onRegister={handleAddProduction} 
-          onSendOTP={handleSendOTP}
-          expectedOTP={generatedOTP}
-        />
-    </>
-  );
-
-  const memberDetails = currentProduction?.email === currentUser 
-    ? { name: currentProduction.coordinator, role: t.role }
-    : currentProduction?.team?.find(m => m.email === currentUser);
-
   return (
     <div className={`h-screen w-full overflow-hidden bg-[#0f172a] text-white flex flex-col relative ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
-      <header className="h-[70px] bg-slate-900/40 border-b border-white/5 flex justify-between items-center px-8 backdrop-blur-md z-40">
-        <div className="font-bold text-lg leading-tight tracking-tight">Safe on Set <span className="opacity-40 font-normal">| Dashboard</span></div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-             <div className="text-right">
-               <div className="block font-medium text-sm text-slate-200">{memberDetails?.name || 'Manager'}</div>
-               <div className="block text-[10px] uppercase tracking-wider text-slate-500">{currentProduction?.name}</div>
-             </div>
-             <div className="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center font-bold text-sm text-white">{memberDetails?.name?.charAt(0) || 'P'}</div>
-          </div>
-          <button className="text-slate-400 hover:text-white text-sm font-medium flex items-center gap-2" onClick={handleLogout}><LogOut size={16} />{t.logout}</button>
+      <header className="h-[75px] bg-slate-900/50 border-b border-white/5 flex justify-between items-center px-10 backdrop-blur-xl z-40">
+        <div className="font-bold text-xl flex items-center gap-3">
+          Safe on Set <span className="opacity-30 font-light mx-2">/</span> <span className="opacity-50 font-normal">Management</span>
         </div>
+        <button className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-widest flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/5 transition-all" onClick={() => {setCurrentUser(''); setView('landing');}}><LogOut size={14} />{t.logout}</button>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-6 py-4 overflow-hidden">
-        <Dashboard lang={lang} score={score} messages={messages} schedule={schedule} onOpenInbox={() => setActiveModal('inbox')} onOpenHistory={() => setActiveModal('history')} onOpenEmail={() => setActiveModal('email')} productionName={currentProduction?.name || 'Production'} />
+      <main className="flex-1 flex items-center justify-center px-8 py-6 overflow-hidden relative">
+        <Dashboard 
+          lang={lang} 
+          score={score} 
+          messages={messages} 
+          schedule={schedule} 
+          onOpenInbox={() => setActiveModal('inbox')} 
+          onOpenHistory={() => setActiveModal('history')} 
+          onOpenEmail={() => setActiveModal('email')} 
+          productionName={currentProduction?.name || 'Production'} 
+          productionId={currentProduction?.id || ''}
+        />
       </main>
 
-      {activeModal !== 'none' && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-slate-800 border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg p-6 relative">
-             <button onClick={() => setActiveModal('none')} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={20} /></button>
-             {activeModal === 'email' && (
-               <div className="text-center">
-                 <h2 className="text-xl font-bold mb-6">QR Poster senden</h2>
-                 <input type="email" value={emailTarget} onChange={(e) => setEmailTarget(e.target.value)} placeholder="Email eingeben" className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-white mb-4 outline-none" />
-                 <button disabled={isSendingEmail || !emailTarget} onClick={async () => {
-                        const success = await sendEmailViaBackend(emailTarget, "QR Poster", `<p>Hier ist dein Poster.</p>`);
-                        if (success) { alert("E-Mail versendet!"); setActiveModal('none'); }
-                    }} className="w-full bg-blue-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2">
-                   {isSendingEmail ? <Loader2 className="animate-spin" /> : "Jetzt senden"}
-                 </button>
-               </div>
-             )}
-             {activeModal === 'inbox' && (
-               <div className="text-left">
-                  <h2 className="text-xl font-bold mb-4">{t.inboxTitle}</h2>
-                  <div className="max-h-[60vh] overflow-y-auto">
-                    {messages.length === 0 ? <p className="text-slate-500">No feedback yet.</p> : (
-                      <ul className="space-y-3">
-                        {messages.map((m, i) => (
-                          <li key={i} className="bg-white/5 p-4 rounded-lg border border-white/5">
-                             <div className="flex justify-between text-xs text-slate-400"><span>{m.date}</span><span>Score: {m.score}%</span></div>
-                             <p className="text-sm mt-2 italic">"{m.text}"</p>
-                             <div className="text-xs text-slate-500 mt-2">Kontakt: {m.contact}</div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-               </div>
-             )}
+      {activeModal === 'inbox' && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-6">
+          <div className="bg-slate-900 border border-white/10 rounded-[32px] shadow-2xl w-full max-w-2xl p-8 relative animate-in zoom-in-95 duration-200">
+             <button onClick={() => setActiveModal('none')} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={20} /></button>
+             <h2 className="text-2xl font-black mb-6 tracking-tight flex items-center gap-3">
+               <Inbox size={24} className="text-rose-500" />
+               {t.inboxTitle}
+             </h2>
+             <div className="max-h-[65vh] overflow-y-auto custom-scrollbar pr-4">
+               {messages.length === 0 ? <div className="text-center py-16 text-slate-500 italic">No feedback yet.</div> : (
+                 <ul className="space-y-4">
+                   {messages.map((m) => (
+                     <li key={m.id} className={`p-6 rounded-2xl border transition-all ${m.resolved ? 'bg-black/20 border-white/5 opacity-50' : 'bg-white/[0.03] border-white/10'}`}>
+                        <div className="flex justify-between text-[10px] text-slate-500 uppercase tracking-widest mb-4 font-black">
+                           <span>{m.date}</span>
+                           <span className={m.score > 50 ? 'text-rose-500' : 'text-emerald-500'}>{m.department} | {m.score}%</span>
+                        </div>
+                        <p className="text-base text-slate-200 leading-relaxed font-medium mb-6">"{m.text}"</p>
+                        <div className="flex items-center justify-between border-t border-white/5 pt-4">
+                           <div className="text-xs text-blue-400 font-bold bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20">{m.contact}</div>
+                           {!m.resolved && (
+                             <button onClick={() => handleResolveMessage(m.id)} className="flex items-center gap-2 text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400 bg-emerald-500/5 px-4 py-2 rounded-full border border-emerald-500/20 transition-all">
+                               <CheckCircle2 size={12} /> {t.markResolved}
+                             </button>
+                           )}
+                           {m.resolved && <div className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1"><CheckCircle2 size={12}/> Resolved</div>}
+                        </div>
+                     </li>
+                   ))}
+                 </ul>
+               )}
+             </div>
           </div>
         </div>
       )}

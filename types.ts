@@ -8,6 +8,7 @@ export interface Message {
   contact: string;
   score: number;
   department?: string;
+  resolved?: boolean; // Neu: Status für Management
 }
 
 export interface ShootDay {
@@ -34,7 +35,6 @@ export interface Production {
   email: string;
   status: 'Active' | 'Pending' | 'Invited' | 'Finished';
   team?: TeamMember[];
-  // New Registration Fields
   country?: string;
   periodStart?: string;
   periodEnd?: string;
@@ -74,11 +74,11 @@ export interface Translation {
   explText80: string;
   imprBtn: string;
   imprTitle: string;
-  imprText: string; // New
-  privacyTitle: string; // New
-  privacyText: string; // New
-  termsTitle: string; // New
-  termsText: string; // New
+  imprText: string;
+  privacyTitle: string;
+  privacyText: string;
+  termsTitle: string;
+  termsText: string;
   votingClosed: string;
   votingClosedDesc: string;
   btnPositive: string;
@@ -140,7 +140,6 @@ export interface Translation {
   save: string;
   cancel: string;
   inviteSent: string;
-  // Registration
   registerProd: string;
   regTitle: string;
   regDesc: string;
@@ -159,10 +158,8 @@ export interface Translation {
   trustInternalName: string;
   regSuccess: string;
   regSuccessDesc: string;
-  // New Tabs
   tabSchedule: string;
   tabDetails: string;
-  // Landing Page
   landHero: string;
   landSub: string;
   landCTA: string;
@@ -179,15 +176,16 @@ export interface Translation {
   how1: string;
   how2: string;
   how3: string;
-  // Trust Badges
   trustBadge1: string;
   trustBadge2: string;
-  // Trust Section
   trustSecTitle: string;
   trustSecSub: string;
   trustSecFeat1: string;
   trustSecFeat2: string;
+  trustSecFeat3: string;
   trustCardTitle: string;
   trustCardName: string;
   trustCardBtn: string;
+  deptInsights: string; // Neu
+  markResolved: string; // Neu
 }

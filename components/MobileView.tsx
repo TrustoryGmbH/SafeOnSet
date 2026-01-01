@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { TRANSLATIONS } from '../constants';
 import { Language, ShootDay } from '../types';
 import Smiley from './Smiley';
-import { ArrowLeft, Lock, Info, ChevronDown, CheckCircle, ShieldCheck, MessageSquare, CornerDownLeft } from 'lucide-react';
+import { ArrowLeft, Lock, Info, ChevronDown, CheckCircle, ShieldCheck, MessageSquare, CornerDownLeft, Building } from 'lucide-react';
 
 interface MobileViewProps {
   lang: Language;
@@ -11,9 +11,10 @@ interface MobileViewProps {
   onSubmit: (score: number, message?: { text: string; contact: string; department?: string }) => void;
   onBack: () => void;
   schedule: ShootDay[];
+  productionName?: string; // Neu: Für Kontextanzeige
 }
 
-const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack, schedule }) => {
+const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack, schedule, productionName }) => {
   const t = TRANSLATIONS[lang];
   const [showComplaintForm, setShowComplaintForm] = useState(false);
   const [complaintText, setComplaintText] = useState('');
@@ -21,7 +22,6 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
   const [selectedDept, setSelectedDept] = useState<string>('');
   const [isClosed, setIsClosed] = useState(false);
   
-  // States for success flow and rate limiting
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hasAlreadyVoted, setHasAlreadyVoted] = useState(false);
 
@@ -63,7 +63,6 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
 
   const departments = Object.entries(t.depts);
 
-  // --- Background Ambience ---
   const Background = () => (
     <>
       <div className="absolute top-[-10%] left-[-20%] w-[300px] h-[300px] bg-blue-600/20 rounded-full blur-[100px] pointer-events-none" />
@@ -71,7 +70,6 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
     </>
   );
 
-  // --- 1. Success Screen ---
   if (isSubmitted) {
       return (
           <div className={`fixed inset-0 z-50 bg-[#0f172a] flex flex-col items-center justify-center text-white ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
@@ -96,12 +94,11 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
       );
   }
 
-  // --- 2. Already Voted Screen ---
   if (hasAlreadyVoted) {
       return (
         <div className={`fixed inset-0 z-50 bg-[#0f172a] flex flex-col items-center justify-center text-white p-6 ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
             <Background />
-            <div className="relative z-10 w-full max-w-sm bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/10 flex flex-col items-center text-center">
+            <div className="relative z-10 w-full max-sm bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/10 flex flex-col items-center text-center">
                 <ShieldCheck size={64} className="text-blue-400 mb-6" strokeWidth={1.5} />
                 <h2 className="text-2xl font-bold mb-3">{t.alreadyVoted}</h2>
                 <p className="text-slate-400 text-sm leading-relaxed mb-8">{t.alreadyVotedDesc}</p>
@@ -117,7 +114,6 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
       );
   }
 
-  // --- 3. Main Voting Interface ---
   return (
     <div className={`fixed inset-0 z-50 bg-[#0f172a] text-white overflow-y-auto overflow-x-hidden ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
       <Background />
@@ -127,6 +123,14 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
         <button onClick={onBack} className="text-slate-400 hover:text-white transition-colors">
            <ArrowLeft size={24} />
         </button>
+        
+        {productionName && (
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-full">
+            <Building size={12} className="text-blue-400" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 truncate max-w-[120px]">{productionName}</span>
+          </div>
+        )}
+
         <div className="flex gap-1 bg-white/5 p-1 rounded-full border border-white/5 backdrop-blur-sm">
            {(['en', 'de', 'ar'] as Language[]).map((l) => (
             <button
@@ -142,7 +146,6 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
 
       <div className="relative z-10 flex flex-col items-center pt-8 pb-12 px-6 max-w-md mx-auto min-h-[85vh]">
         
-        {/* Main Title Section */}
         <div className="w-full flex flex-col items-center mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-center leading-tight mb-2 tracking-tight text-white drop-shadow-sm">
                 {t.mobTitle}
@@ -159,7 +162,6 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
         ) : !showComplaintForm ? (
         <div className="w-full flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-8 duration-500">
             
-            {/* Department Selector */}
             <div className="relative w-full">
                 <select 
                     value={selectedDept}
@@ -174,12 +176,10 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
                 <ChevronDown className={`absolute ${lang === 'ar' ? 'left-4' : 'right-4'} top-4 text-slate-500 pointer-events-none`} size={18} />
             </div>
 
-            {/* Positive Button */}
             <button 
                 onClick={handlePositiveClick}
                 className="group relative w-full h-32 bg-gradient-to-br from-emerald-600 to-emerald-800 border border-emerald-500/30 rounded-3xl shadow-[0_0_30px_rgba(16,185,129,0.1)] active:scale-95 transition-all flex items-center justify-between overflow-hidden hover:shadow-[0_0_40px_rgba(16,185,129,0.2)] hover:border-emerald-400/50"
             >
-                {/* Glow Effect */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-400/30 transition-all duration-500"></div>
 
                 <div className="flex-1 text-left px-6 z-10">
@@ -191,12 +191,10 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
                 </div>
             </button>
 
-            {/* Negative Button */}
             <button 
                 onClick={handleNegativeClick}
                 className="group relative w-full h-32 bg-gradient-to-br from-rose-600 to-rose-900 border border-rose-500/30 rounded-3xl shadow-[0_0_30px_rgba(244,63,94,0.1)] active:scale-95 transition-all flex items-center justify-between overflow-hidden hover:shadow-[0_0_40px_rgba(244,63,94,0.2)] hover:border-rose-400/50"
             >
-                 {/* Glow Effect */}
                  <div className="absolute top-0 right-0 w-32 h-32 bg-rose-400/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-rose-400/30 transition-all duration-500"></div>
 
                  <div className="flex-1 text-left px-6 z-10">
@@ -209,7 +207,6 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
             </button>
         </div>
         ) : (
-            /* Complaint Form */
             <div className="w-full bg-slate-900/80 backdrop-blur-xl p-1 rounded-3xl shadow-2xl border border-white/10 animate-in fade-in zoom-in-95 duration-300 ring-1 ring-white/5">
                 <div className="bg-slate-950/50 rounded-[22px] p-6">
                     <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
@@ -268,7 +265,6 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
             </div>
         )}
 
-        {/* Disclaimer Footer */}
         {!showComplaintForm && !isClosed && (
             <div className="w-full mt-auto pt-8 pb-4">
                 <div className="flex flex-col items-center opacity-40 hover:opacity-100 transition-opacity duration-300">
