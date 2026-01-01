@@ -1,5 +1,5 @@
 {
-  "name": "trustory",
+  "name": "safe-on-set",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,8 @@
     "jspdf": "^3.0.4",
     "react": "^19.2.1",
     "qrcode.react": "^4.2.0",
-    "react-dom": "^19.2.1"
+    "react-dom": "^19.2.1",
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
