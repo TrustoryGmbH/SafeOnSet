@@ -20,14 +20,10 @@ function App() {
   const [productions, setProductions] = useState<Production[]>(INITIAL_PRODUCTIONS);
 
   const [activeModal, setActiveModal] = useState<'none' | 'email' | 'inbox' | 'history' | 'settings' | 'impressum'>('none');
-  const [settingsTab, setSettingsTab] = useState<'schedule' | 'details'>('schedule');
   const [adminPassword, setAdminPassword] = useState('');
-  const [editDetailsForm, setEditDetailsForm] = useState<Partial<Production>>({});
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-
-  const [emailTarget, setEmailTarget] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [generatedOTP, setGeneratedOTP] = useState<string>('');
+  const [emailTarget, setEmailTarget] = useState('');
 
   useEffect(() => {
     const channel = new BroadcastChannel('safe-on-set_v1');
@@ -64,7 +60,6 @@ function App() {
   const sendEmailViaBackend = async (to: string, subject: string, html: string) => {
     setIsSendingEmail(true);
     try {
-      // Netlify Functions sind unter /.netlify/functions/ erreichbar
       const response = await fetch('/.netlify/functions/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,12 +71,16 @@ function App() {
       if (response.ok) {
         return true;
       } else {
-        const errorMsg = data.error?.message || data.error || "Unbekannter Fehler";
-        alert(`Versandfehler: ${errorMsg}`);
+        const errorMsg = data.error?.message || data.error || "Fehler beim Senden";
+        if (errorMsg.includes("domain is not verified")) {
+          alert("Resend Fehler: Die Domain safe-on-set.com ist noch nicht verifiziert. Bitte schließe das DNS-Setup bei Netlify ab.");
+        } else {
+          alert(`Versandfehler: ${JSON.stringify(errorMsg)}`);
+        }
         return false;
       }
     } catch (err) {
-      alert("Netzwerkfehler: Die Server-Funktion konnte nicht erreicht werden. Stelle sicher, dass die Seite auf Netlify live ist.");
+      alert("Netzwerkfehler: Verbindung zum Email-Server fehlgeschlagen.");
       return false;
     } finally {
       setIsSendingEmail(false);
@@ -92,7 +91,7 @@ function App() {
     const userExists = productions.some(p => p.email === email || p.team?.some(m => m.email === email));
     
     if (!userExists) {
-      alert("Diese E-Mail-Adresse ist keiner aktiven Produktion zugeordnet.");
+      alert("Diese E-Mail-Adresse ist keiner Produktion zugeordnet. Bitte registriere deine Produktion zuerst.");
       return false;
     }
 
@@ -102,11 +101,11 @@ function App() {
     return await sendEmailViaBackend(
       email,
       "Dein Safe on Set Login-Code",
-      `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:10px;">
-        <h2 style="color:#2563eb;">Safe on Set Login</h2>
-        <p>Dein Code lautet:</p>
-        <div style="background:#f3f4f6;padding:20px;text-align:center;font-size:32px;font-weight:bold;letter-spacing:5px;">${otp}</div>
-        <p style="font-size:12px;color:gray;margin-top:20px;">Dieser Code ist nur für kurze Zeit gültig.</p>
+      `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:10px;max-width:500px;margin:auto;">
+        <h2 style="color:#2563eb;text-align:center;">Safe on Set Login</h2>
+        <p style="text-align:center;">Dein Verifizierungscode lautet:</p>
+        <div style="background:#f3f4f6;padding:20px;text-align:center;font-size:32px;font-weight:bold;letter-spacing:5px;border-radius:8px;margin:20px 0;">${otp}</div>
+        <p style="font-size:12px;color:#64748b;text-align:center;">Falls du diesen Code nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
       </div>`
     );
   };
@@ -141,12 +140,16 @@ function App() {
 
   const handleAdminLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPassword === 'TahmeeNils54321') { setView('admin-dashboard'); setAdminPassword(''); }
-    else { alert('Wrong password'); }
+    if (adminPassword === 'TahmeeNils54321') { 
+        setView('admin-dashboard'); 
+        setAdminPassword(''); 
+    } else { 
+        alert('Falsches Passwort'); 
+    }
   };
 
   const handleAddProduction = (prod: Omit<Production, 'id' | 'status'>) => {
-    const newProd: Production = { ...prod, id: Date.now().toString(), status: 'Pending', team: [] };
+    const newProd: Production = { ...prod, id: Date.now().toString(), status: 'Active', team: [] };
     const newProds = [...productions, newProd];
     setProductions(newProds);
     persistData('productions', newProds);
@@ -161,7 +164,7 @@ function App() {
   const handleInvite = async (id: string) => {
     const prod = productions.find(p => p.id === id);
     if (!prod) return;
-    const success = await sendEmailViaBackend(prod.email, "Einladung zu Safe on Set", `<p>Deine Produktion ${prod.name} ist bereit.</p>`);
+    const success = await sendEmailViaBackend(prod.email, "Willkommen bei Safe on Set", `<p>Deine Produktion ${prod.name} ist nun freigeschaltet.</p>`);
     if (success) {
       handleUpdateProduction(id, { status: 'Invited' });
       alert("Einladung versendet!");
@@ -172,29 +175,45 @@ function App() {
 
   const score = totalVotes === 0 ? 100 : Math.max(0, 100 - (negVotes * 10));
   const t = TRANSLATIONS[lang];
-  const isRTL = lang === 'ar';
-  const memberDetails = currentProduction?.email === currentUser 
-    ? { name: currentProduction.coordinator, role: t.role }
-    : currentProduction?.team?.find(m => m.email === currentUser);
 
   if (view === 'landing') return <LandingPage lang={lang} setLang={setLang} onLoginClick={() => setView('login')} onSimulateClick={() => setView('mobile')} />;
   if (view === 'mobile') return <MobileView lang={lang} setLang={setLang} onSubmit={handleMobileSubmit} onBack={() => setView('landing')} schedule={schedule} />;
   if (view === 'admin-dashboard') return <AdminDashboard lang={lang} onLogout={handleLogout} productions={productions} onAddProduction={handleAddProduction} onInvite={handleInvite} onUpdateProduction={handleUpdateProduction} />;
+  
   if (view === 'admin-login') return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
-       <div className="w-full max-sm bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
-           <button onClick={() => setView('login')} className="mb-6 text-slate-400 hover:text-white flex items-center gap-2 text-sm"><ArrowLeft size={16} /> Back</button>
-           <h2 className="text-2xl font-bold mb-6">{t.adminLogin}</h2>
-           <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
-              <input type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} placeholder="Master Password" className="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg outline-none focus:border-blue-500" autoFocus />
-              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg">Login</button>
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#0f172a] text-white p-6 relative">
+       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
+       <div className="w-full max-w-md bg-slate-900/60 backdrop-blur-2xl p-10 rounded-[32px] shadow-2xl border border-white/10 relative z-10 mx-auto">
+           <button onClick={() => setView('login')} className="mb-8 text-slate-400 hover:text-white flex items-center gap-2 text-sm font-bold bg-white/5 px-4 py-2 rounded-full border border-white/5 transition-colors">
+              <ArrowLeft size={16} /> Zurück
+           </button>
+           <div className="text-center mb-10">
+              <h2 className="text-3xl font-black mb-2 tracking-tight">Admin Access</h2>
+              <p className="text-slate-500 text-xs uppercase tracking-widest font-bold">Secure Zone</p>
+           </div>
+           <form onSubmit={handleAdminLoginSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Password</label>
+                <input 
+                  type="password" 
+                  value={adminPassword} 
+                  onChange={e => setAdminPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="w-full p-4 bg-slate-950/50 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-center tracking-[0.3em]" 
+                  autoFocus 
+                />
+              </div>
+              <button type="submit" className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl shadow-xl shadow-blue-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">
+                Unlock Dashboard
+              </button>
            </form>
        </div>
     </div>
   );
+
   if (view === 'login') return (
     <>
-        <button onClick={() => setView('landing')} className="fixed top-6 left-6 z-50 text-slate-500 hover:text-white flex items-center gap-2 text-sm font-bold bg-slate-900/50 p-2 rounded-full border border-white/5 backdrop-blur-md transition-colors"><ArrowLeft size={16} /> Home</button>
+        <button onClick={() => setView('landing')} className="fixed top-6 left-6 z-50 text-slate-500 hover:text-white flex items-center gap-2 text-sm font-bold bg-slate-900/50 p-2 px-4 rounded-full border border-white/5 backdrop-blur-md transition-colors"><ArrowLeft size={16} /> Home</button>
         <Login 
           onLogin={handleProductionLogin} 
           lang={lang} 
@@ -207,12 +226,16 @@ function App() {
     </>
   );
 
+  const memberDetails = currentProduction?.email === currentUser 
+    ? { name: currentProduction.coordinator, role: t.role }
+    : currentProduction?.team?.find(m => m.email === currentUser);
+
   return (
     <div className={`h-screen w-full overflow-hidden bg-[#0f172a] text-white flex flex-col relative ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
       <header className="h-[70px] bg-slate-900/40 border-b border-white/5 flex justify-between items-center px-8 backdrop-blur-md z-40">
         <div className="font-bold text-lg leading-tight tracking-tight">Safe on Set <span className="opacity-40 font-normal">| Dashboard</span></div>
         <div className="flex items-center gap-6">
-          <div className={`flex items-center gap-3 border-white/10`}>
+          <div className="flex items-center gap-3">
              <div className="text-right">
                <div className="block font-medium text-sm text-slate-200">{memberDetails?.name || 'Manager'}</div>
                <div className="block text-[10px] uppercase tracking-wider text-slate-500">{currentProduction?.name}</div>
