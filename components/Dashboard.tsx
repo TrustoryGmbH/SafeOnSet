@@ -16,7 +16,7 @@ interface DashboardProps {
   onOpenHistory: () => void;
   onOpenEmail: () => void;
   productionName: string;
-  productionId: string; // Neu für QR-Code Link
+  productionId: string;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
@@ -26,17 +26,13 @@ const Dashboard: React.FC<DashboardProps> = ({
   const t = TRANSLATIONS[lang];
   const qrRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  
-  const [showBars, setShowBars] = useState(false);
-  const [activePopup, setActivePopup] = useState<'none' | 'pdf' | 'email'>('none');
+  const [activePopup, setActivePopup] = useState<'none' | 'pdf'>('none');
 
   useEffect(() => {
     if (qrRef.current) {
         const canvas = qrRef.current.querySelector('canvas');
         if (canvas) canvasRef.current = canvas;
     }
-    const timer = setTimeout(() => setShowBars(true), 150);
-    return () => clearTimeout(timer);
   }, []);
 
   const getColor = (s: number) => {
@@ -55,95 +51,84 @@ const Dashboard: React.FC<DashboardProps> = ({
   const deptCounts = getDeptStatus();
 
   const getExplanation = () => {
-    if (score === 100) return { title: t.explTitle100, text: t.explText100, color: 'text-green-400', icon: CheckCircle };
-    if (score >= 90) return { title: t.explTitle90, text: t.explText90, color: 'text-yellow-400', icon: AlertCircle };
-    return { title: t.explTitle80, text: t.explText80, color: 'text-red-400', icon: AlertCircle };
+    if (score === 100) return { title: t.explTitle100, text: t.explText100, color: 'text-green-500', icon: CheckCircle };
+    if (score >= 90) return { title: t.explTitle90, text: t.explText90, color: 'text-yellow-500', icon: AlertCircle };
+    return { title: t.explTitle80, text: t.explText80, color: 'text-red-500', icon: AlertCircle };
   };
 
   const explanation = getExplanation();
-  const Icon = explanation.icon;
-
   const handlePdfSelect = (l: Language) => {
     generatePosterPDF(canvasRef.current, productionName, l);
     setActivePopup('none');
   };
 
-  // Dynamische URL für den QR-Code
-  const qrUrl = `${window.location.origin}${window.location.pathname}?prod=${productionId}`;
+  // Robuste URL Generierung für den QR Code
+  const getQrUrl = () => {
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set('prod', productionId);
+    return url.toString();
+  };
 
   return (
-    <div className={`grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-0 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl w-full max-w-6xl mx-auto h-[550px] relative overflow-hidden ring-1 ring-white/5 ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
+    <div className={`w-full max-w-6xl mx-auto bg-[#111827]/40 backdrop-blur-xl border border-white/5 rounded-[32px] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] min-h-[500px] ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
       
       {/* Left: Live Mood */}
-      <div className={`flex flex-col h-full bg-gradient-to-b from-white/5 to-transparent ${lang === 'ar' ? 'border-l' : 'border-r'} border-white/5 relative group overflow-hidden`}>
-        <div className="pt-6 px-6 pb-2 text-center relative z-10">
-             <div className="text-[10px] font-black tracking-[3px] text-slate-500 uppercase flex items-center justify-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                {t.hMood}
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-             </div>
+      <div className="p-8 border-r border-white/5 flex flex-col items-center">
+        <div className="flex items-center gap-3 mb-12">
+          <div className="w-1 h-1 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></div>
+          <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.hMood}</span>
+          <div className="w-1 h-1 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center relative">
-          <div className="relative z-10 scale-100 transition-transform duration-500 hover:scale-105 animate-float">
-            <Smiley score={score} animate={true} size={110} />
-          </div>
-          <div className="text-5xl font-black mt-6 text-white leading-none tracking-tight drop-shadow-lg animate-fade-in relative">
-            {score}%
-          </div>
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <Smiley score={score} animate={true} size={130} />
+          <div className="text-6xl font-black mt-8 text-white tracking-tighter">{score}%</div>
         </div>
-        
-        <div className="p-5 relative z-10">
-           <div className={`bg-slate-950/50 backdrop-blur-md p-3.5 rounded-xl border border-white/5 transition-all duration-300 hover:border-white/10 hover:translate-y-[-2px]`}>
-              <div className={`flex items-center gap-2 mb-1.5 ${explanation.color}`}>
-                 <Icon size={14} strokeWidth={3} />
-                 <span className="text-[11px] font-bold uppercase tracking-wide">{explanation.title.replace('Status: ', '')}</span>
-              </div>
-              <span className="text-slate-400 text-[11px] leading-snug block">{explanation.text}</span>
+
+        <div className="w-full mt-12 bg-black/20 border border-white/5 rounded-2xl p-4">
+           <div className={`flex items-center gap-2 mb-1 ${explanation.color}`}>
+             <explanation.icon size={14} strokeWidth={3} />
+             <span className="text-[10px] font-black uppercase tracking-wider">{explanation.title}</span>
            </div>
+           <p className="text-[11px] text-slate-500 leading-relaxed">{explanation.text}</p>
         </div>
       </div>
 
-      {/* Middle: Trend & Dept Insights */}
-      <div className="flex flex-col h-full bg-slate-900/20">
-        <div className="pt-6 px-6 pb-4 flex justify-between items-end border-b border-white/5">
-             <div className="text-[10px] font-black tracking-[3px] text-slate-500 uppercase flex items-center gap-2">
-                <TrendingUp size={12} />
-                {t.hTrend}
-             </div>
-        </div>
-        
-        <div className="flex-1 flex flex-col overflow-hidden p-6 pt-2">
-          {/* Trend Bars */}
-          <ul className="flex flex-col gap-1 mb-6">
-            {schedule.slice(0, 5).map((item, idx) => {
+      {/* Middle: History & Insights */}
+      <div className="flex flex-col border-r border-white/5">
+        <div className="p-8 pb-4">
+          <div className="flex items-center gap-2 mb-8">
+            <TrendingUp size={14} className="text-slate-500" />
+            <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.hTrend}</span>
+          </div>
+          
+          <div className="space-y-4 mb-12">
+            {schedule.slice(0, 3).map((day, idx) => {
               const dayScore = idx === 0 ? score : 100 - (idx * 5);
-              const barColor = getColor(dayScore);
-              const isToday = idx === 0;
               return (
-                <li key={idx} className={`flex items-center justify-between p-2 rounded-lg ${isToday ? 'bg-white/5' : ''}`}>
-                   <span className="text-xs text-slate-400 w-16">{isToday ? t.today : `${t.day} ${item.day}`}</span>
-                   <div className="flex-1 h-1.5 bg-slate-800 rounded-full mx-4 overflow-hidden border border-white/5">
-                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${dayScore}%`, backgroundColor: barColor }} />
-                   </div>
-                   <span className="text-xs font-bold w-8 text-right text-slate-500">{dayScore}</span>
-                </li>
+                <div key={idx} className="flex items-center gap-4">
+                  <span className="text-xs font-bold text-slate-400 w-16">{idx === 0 ? t.today : `${t.day} ${day.day}`}</span>
+                  <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${dayScore}%`, backgroundColor: getColor(dayScore) }}></div>
+                  </div>
+                  <span className="text-[10px] font-black text-slate-500 w-8 text-right">{dayScore}</span>
+                </div>
               );
             })}
-          </ul>
+          </div>
 
-          <div className="mt-auto border-t border-white/5 pt-4">
-             <div className="text-[10px] font-black tracking-[3px] text-slate-600 uppercase mb-4 flex items-center gap-2">
-                <Activity size={12} />
-                {t.deptInsights}
+          <div className="pt-8 border-t border-white/5">
+             <div className="flex items-center gap-2 mb-6">
+                <Activity size={14} className="text-slate-500" />
+                <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.deptInsights}</span>
              </div>
-             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+             <div className="grid grid-cols-4 gap-3">
                 {Object.entries(t.depts).slice(0, 8).map(([key, label]) => {
                   const count = deptCounts[label] || 0;
                   return (
-                    <div key={key} className={`p-2.5 rounded-xl border transition-all duration-300 ${count > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-white/5 border-white/5 opacity-40'}`}>
-                       <div className="text-[9px] text-slate-500 font-bold truncate mb-1">{label}</div>
-                       <div className={`text-sm font-black ${count > 0 ? 'text-red-500' : 'text-slate-400'}`}>{count}</div>
+                    <div key={key} className={`p-3 rounded-xl border ${count > 0 ? 'bg-rose-500/5 border-rose-500/20' : 'bg-white/[0.02] border-white/5'}`}>
+                      <div className="text-[9px] font-bold text-slate-500 truncate mb-1 uppercase tracking-tight">{label}</div>
+                      <div className={`text-base font-black ${count > 0 ? 'text-rose-500' : 'text-slate-400'}`}>{count}</div>
                     </div>
                   );
                 })}
@@ -151,46 +136,47 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="p-4 border-t border-white/5 grid grid-cols-2 gap-3 bg-white/[0.02]">
-           <button onClick={onOpenInbox} className="flex items-center justify-center gap-2 h-10 bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 text-slate-300 rounded-lg hover:text-red-400 transition-all text-xs font-bold group shadow-lg">
-             <div className="relative"><Inbox size={14} />{messages.filter(m => !m.resolved).length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}</div>
+        <div className="mt-auto p-6 border-t border-white/5 grid grid-cols-2 gap-4 bg-black/10">
+           <button onClick={onOpenInbox} className="h-12 bg-slate-800/50 hover:bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all group">
+             <Inbox size={16} className="text-slate-400 group-hover:text-rose-400" />
              {t.inbox}
            </button>
-           <button onClick={onOpenHistory} className="flex items-center justify-center gap-2 h-10 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-lg hover:brightness-110 transition-all text-xs font-bold shadow-lg">
-             <BarChart2 size={14} /> {t.viewStats}
+           <button onClick={onOpenHistory} className="h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-900/20">
+             <BarChart2 size={16} />
+             {t.viewStats}
            </button>
         </div>
       </div>
 
-      {/* Right: Access */}
-      <div className={`flex flex-col h-full bg-gradient-to-b from-white/5 to-transparent ${lang === 'ar' ? 'border-r' : 'border-l'} border-white/5`}>
-        <div className="pt-6 px-6 pb-2 text-center">
-             <div className="text-[10px] font-black tracking-[3px] text-slate-500 uppercase">{t.hAccess}</div>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center relative">
-          <div className="bg-white p-4 pb-2 rounded-2xl shadow-xl transition-transform hover:scale-105" ref={qrRef}>
-            <QRCodeCanvas value={qrUrl} size={130} level={"H"} bgColor="#FFFFFF" fgColor="#0f172a" />
-            <div className="mt-2 text-center text-[9px] font-bold text-slate-400 tracking-widest uppercase">Scan Me</div>
+      {/* Right: Actions */}
+      <div className="p-8 flex flex-col items-center">
+        <div className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase mb-12">{t.hAccess}</div>
+        
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="bg-white p-4 rounded-2xl shadow-2xl transition-transform hover:scale-105" ref={qrRef}>
+            <QRCodeCanvas value={getQrUrl()} size={140} level="H" />
+            <div className="mt-2 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Scan Me</div>
           </div>
         </div>
-        
-        <div className="p-5">
-            <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setActivePopup('pdf')} className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-slate-800/50 border border-white/10 text-slate-300 rounded-xl hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider relative">
-                    <FileText size={16} /> {t.pdf}
-                    {activePopup === 'pdf' && (
-                        <div className="absolute bottom-full mb-2 left-0 w-full bg-slate-800 rounded-lg p-1 border border-white/10 shadow-2xl z-50">
-                            {(['en', 'de', 'ar'] as Language[]).map(l => (
-                                <div key={l} onClick={(e) => { e.stopPropagation(); handlePdfSelect(l); }} className="p-2 hover:bg-blue-600 rounded text-[10px] uppercase text-center">{l}</div>
-                            ))}
-                        </div>
-                    )}
-                </button>
-                <button onClick={onOpenEmail} className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-slate-800/50 border border-white/10 text-slate-300 rounded-xl hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider">
-                    <Mail size={16} /> {t.email}
-                </button>
+
+        <div className="w-full mt-12 grid grid-cols-2 gap-3">
+            <div className="relative">
+              <button onClick={() => setActivePopup(activePopup === 'pdf' ? 'none' : 'pdf')} className="w-full h-12 bg-slate-800/50 border border-white/10 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-all">
+                <FileText size={16} className="text-slate-400" />
+                <span className="text-[8px] font-black uppercase tracking-widest">{t.pdf}</span>
+              </button>
+              {activePopup === 'pdf' && (
+                <div className="absolute bottom-full mb-2 left-0 w-full bg-slate-800 border border-white/10 rounded-xl p-1 shadow-2xl z-50">
+                  {['en', 'de', 'ar'].map((l) => (
+                    <button key={l} onClick={() => handlePdfSelect(l as Language)} className="w-full py-2 hover:bg-blue-600 rounded-lg text-[10px] font-bold uppercase">{l}</button>
+                  ))}
+                </div>
+              )}
             </div>
+            <button onClick={onOpenEmail} className="h-12 bg-slate-800/50 border border-white/10 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-all">
+              <Mail size={16} className="text-slate-400" />
+              <span className="text-[8px] font-black uppercase tracking-widest">{t.email}</span>
+            </button>
         </div>
       </div>
     </div>

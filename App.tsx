@@ -7,7 +7,7 @@ import MobileView from './components/MobileView';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import LandingPage from './components/LandingPage';
-import { LogOut, ArrowLeft, X, Loader2, Inbox, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { LogOut, X, Inbox, CheckCircle2 } from 'lucide-react';
 
 function App() {
   const [lang, setLang] = useState<Language>('en');
@@ -19,37 +19,34 @@ function App() {
   const [schedule, setSchedule] = useState<ShootDay[]>(INITIAL_SCHEDULE);
   const [productions, setProductions] = useState<Production[]>(INITIAL_PRODUCTIONS);
 
-  // States für Deep-Linking
   const [activeProdForFeedback, setActiveProdForFeedback] = useState<Production | null>(null);
-
   const [activeModal, setActiveModal] = useState<'none' | 'email' | 'inbox' | 'history' | 'settings' | 'impressum'>('none');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [generatedOTP, setGeneratedOTP] = useState<string>('');
-  const [emailTarget, setEmailTarget] = useState('');
-  const [dnsStatus, setDnsStatus] = useState<'unknown' | 'pending' | 'verified'>('verified');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
+  // Synchronisation und Deep-Link Check
   useEffect(() => {
     const channel = new BroadcastChannel('safe-on-set_v1');
     channel.onmessage = (event) => {
       if (event.data.type === 'UPDATE') syncFromStorage();
     };
-    syncFromStorage();
     
-    // Deep-Link Check
+    // Zuerst Daten laden
+    const currentProds = syncFromStorage();
+    
+    // Dann URL prüfen
     const params = new URLSearchParams(window.location.search);
     const prodId = params.get('prod');
     if (prodId) {
-      // Wir suchen in den aktuellen Produktionen
-      const found = productions.find(p => p.id === prodId);
-      if (found) {
-        setActiveProdForFeedback(found);
+      const targetProd = currentProds.find(p => p.id === prodId);
+      if (targetProd) {
+        setActiveProdForFeedback(targetProd);
         setView('mobile');
       }
     }
 
     return () => channel.close();
-  }, [productions]);
+  }, []);
 
   const currentProduction = productions.find(p => p.email === currentUser || p.team?.some(m => m.email === currentUser));
   
@@ -58,13 +55,14 @@ function App() {
     const sTotal = parseInt(localStorage.getItem('totalVotes') || '0');
     const sMsgs = JSON.parse(localStorage.getItem('incidentMessages') || '[]');
     const sSched = JSON.parse(localStorage.getItem('shootSchedule') || 'null');
-    const sProds = JSON.parse(localStorage.getItem('productions') || 'null');
+    const sProds = JSON.parse(localStorage.getItem('productions') || 'null') || INITIAL_PRODUCTIONS;
     
     setNegVotes(sNeg);
     setTotalVotes(sTotal);
     setMessages(sMsgs);
     if(sSched) setSchedule(sSched);
-    if(sProds) setProductions(sProds);
+    setProductions(sProds);
+    return sProds as Production[];
   };
 
   const persistData = (key: string, data: any) => {
@@ -82,8 +80,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, subject, html }),
       });
-      if (response.ok) return true;
-      return false;
+      return response.ok;
     } catch (err) {
       return false;
     } finally {
@@ -139,7 +136,6 @@ function App() {
       setLang={setLang} 
       onSubmit={handleMobileSubmit} 
       onBack={() => {
-        // Parameter aus URL entfernen beim Zurückgehen
         window.history.replaceState({}, '', window.location.pathname);
         setView('landing');
       }} 
@@ -151,32 +147,32 @@ function App() {
   if (view === 'admin-dashboard') return <AdminDashboard lang={lang} onLogout={() => {setCurrentUser(''); setView('landing');}} productions={productions} onAddProduction={()=>{}} onInvite={()=>{}} onUpdateProduction={()=>{}} />;
   
   if (view === 'login') return (
-    <div className="relative min-h-screen">
-        <Login 
-          onLogin={(email) => { setCurrentUser(email); setView('dashboard'); }} 
-          lang={lang} setLang={setLang} 
-          onAdminClick={() => setView('admin-login')} 
-          onRegister={()=>{}} 
-          onSendOTP={async (email) => { 
-            const otp = Math.floor(100000 + Math.random() * 900000).toString();
-            setGeneratedOTP(otp);
-            return await sendEmailViaBackend(email, "Safe on Set Login", `<p>Code: <b>${otp}</b></p>`);
-          }}
-          expectedOTP={generatedOTP}
-        />
-    </div>
+    <Login 
+      onLogin={(email) => { setCurrentUser(email); setView('dashboard'); }} 
+      lang={lang} setLang={setLang} 
+      onAdminClick={() => setView('admin-login')} 
+      onRegister={()=>{}} 
+      onSendOTP={async (email) => { 
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        setGeneratedOTP(otp);
+        return await sendEmailViaBackend(email, "Safe on Set Login", `<p>Code: <b>${otp}</b></p>`);
+      }}
+      expectedOTP={generatedOTP}
+    />
   );
 
   return (
     <div className={`h-screen w-full overflow-hidden bg-[#0f172a] text-white flex flex-col relative ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
-      <header className="h-[75px] bg-slate-900/50 border-b border-white/5 flex justify-between items-center px-10 backdrop-blur-xl z-40">
+      <header className="h-[75px] bg-[#0f172a] border-b border-white/5 flex justify-between items-center px-10 z-40">
         <div className="font-bold text-xl flex items-center gap-3">
           Safe on Set <span className="opacity-30 font-light mx-2">/</span> <span className="opacity-50 font-normal">Management</span>
         </div>
-        <button className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-widest flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/5 transition-all" onClick={() => {setCurrentUser(''); setView('landing');}}><LogOut size={14} />{t.logout}</button>
+        <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => {setCurrentUser(''); setView('landing');}}>
+          <LogOut size={14} />{t.logout}
+        </button>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-8 py-6 overflow-hidden relative">
+      <main className="flex-1 flex items-center justify-center px-8 py-6 overflow-hidden">
         <Dashboard 
           lang={lang} 
           score={score} 
@@ -186,13 +182,13 @@ function App() {
           onOpenHistory={() => setActiveModal('history')} 
           onOpenEmail={() => setActiveModal('email')} 
           productionName={currentProduction?.name || 'Production'} 
-          productionId={currentProduction?.id || ''}
+          productionId={currentProduction?.id || '1'}
         />
       </main>
 
       {activeModal === 'inbox' && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-6">
-          <div className="bg-slate-900 border border-white/10 rounded-[32px] shadow-2xl w-full max-w-2xl p-8 relative animate-in zoom-in-95 duration-200">
+          <div className="bg-[#111827] border border-white/10 rounded-[32px] shadow-2xl w-full max-w-2xl p-8 relative animate-in zoom-in-95 duration-200">
              <button onClick={() => setActiveModal('none')} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors bg-white/5 p-2 rounded-full"><X size={20} /></button>
              <h2 className="text-2xl font-black mb-6 tracking-tight flex items-center gap-3">
                <Inbox size={24} className="text-rose-500" />
