@@ -81,7 +81,6 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, subject, html }),
       });
-      const data = await response.json();
       return response.ok;
     } catch (err) {
       console.error("Email error:", err);
@@ -104,7 +103,6 @@ function App() {
     `;
     const success = await sendEmailViaBackend(prod.email, `Registration: ${prod.name}`, html);
     if (success) {
-      // Temporär lokal hinzufügen
       const newProd: Production = { ...prod, id: Date.now().toString(), status: 'Pending', team: [] };
       const updated = [...productions, newProd];
       setProductions(updated);
@@ -195,6 +193,21 @@ function App() {
 
   if (view === 'admin-dashboard') return <AdminDashboard lang={lang} onLogout={() => {setCurrentUser(''); setView('landing');}} productions={productions} onAddProduction={()=>{}} onInvite={()=>{}} onUpdateProduction={()=>{}} />;
   
+  if (view === 'admin-login') return (
+    <Login 
+      onLogin={(email) => { setCurrentUser(email); setView('admin-dashboard'); }} 
+      lang={lang} setLang={setLang} 
+      onAdminClick={() => setView('login')} 
+      onRegister={handleRegister} 
+      onSendOTP={async (email) => { 
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        setGeneratedOTP(otp);
+        return await sendEmailViaBackend(email, "Safe on Set Admin Login", `<div style="font-family:sans-serif; text-align:center; padding: 20px; border: 1px solid #eee; border-radius: 12px;"><h2>Admin Login Code</h2><p style="font-size:32px; font-weight:bold; letter-spacing: 5px; color:#2563eb;">${otp}</p></div>`);
+      }}
+      expectedOTP={generatedOTP}
+    />
+  );
+
   if (view === 'login') return (
     <Login 
       onLogin={(email) => { setCurrentUser(email); setView('dashboard'); }} 
@@ -235,7 +248,7 @@ function App() {
         />
       </main>
 
-      {/* Email Modal */}
+      {/* Modal-Bereiche bleiben unverändert... */}
       {activeModal === 'email' && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-6" onClick={() => setActiveModal('none')}>
           <div className="bg-[#111827] border border-white/10 rounded-[32px] shadow-2xl w-full max-w-md p-8 relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
