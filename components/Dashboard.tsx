@@ -62,6 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     setActivePopup('none');
   };
 
+  // Robuste URL Generierung für den QR Code
   const getQrUrl = () => {
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('prod', productionId);
@@ -103,12 +104,10 @@ const Dashboard: React.FC<DashboardProps> = ({
           
           <div className="space-y-4 mb-12">
             {schedule.slice(0, 3).map((day, idx) => {
-              const dayScore = idx === 0 ? score : 100 - (idx * 5); // Fallback logic
+              const dayScore = idx === 0 ? score : 100 - (idx * 5);
               return (
                 <div key={idx} className="flex items-center gap-4">
-                  <span className="text-xs font-bold text-slate-400 w-16 whitespace-nowrap">
-                    {new Date(day.date).toDateString() === new Date().toDateString() ? t.today : `${t.day} ${day.day}`}
-                  </span>
+                  <span className="text-xs font-bold text-slate-400 w-16">{idx === 0 ? t.today : `${t.day} ${day.day}`}</span>
                   <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${dayScore}%`, backgroundColor: getColor(dayScore) }}></div>
                   </div>
@@ -124,8 +123,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.deptInsights}</span>
              </div>
              <div className="grid grid-cols-4 gap-3">
-                {/* Fixed: cast Object.entries to [string, string][] to ensure label is a string, preventing 'unknown' index type error */}
-                {(Object.entries(t.depts) as [string, string][]).slice(0, 8).map(([key, label]) => {
+                {Object.entries(t.depts).slice(0, 8).map(([key, label]) => {
                   const count = deptCounts[label] || 0;
                   return (
                     <div key={key} className={`p-3 rounded-xl border ${count > 0 ? 'bg-rose-500/5 border-rose-500/20' : 'bg-white/[0.02] border-white/5'}`}>

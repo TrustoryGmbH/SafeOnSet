@@ -9,11 +9,15 @@ export const handler = async (event) => {
     const apiKey = process.env.RESEND_API_KEY;
 
     if (!apiKey) {
+      console.error("Missing RESEND_API_KEY environment variable");
       return { 
         statusCode: 500, 
-        body: JSON.stringify({ error: { message: "RESEND_API_KEY fehlt in den Netlify Environment Variables." } }) 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: { message: "RESEND_API_KEY is not configured." } }) 
       };
     }
+
+    console.log(`Attempting to send email to ${to} with subject: ${subject}`);
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -33,12 +37,14 @@ export const handler = async (event) => {
     const data = await response.json();
 
     if (response.ok) {
+      console.log("Email sent successfully via Resend:", data.id);
       return {
         statusCode: 200,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ success: true, data }),
       };
     } else {
+      console.error("Resend API Error:", data);
       return {
         statusCode: response.status,
         headers: { "Content-Type": "application/json" },
@@ -46,6 +52,7 @@ export const handler = async (event) => {
       };
     }
   } catch (error) {
+    console.error("Internal Lambda Error:", error);
     return {
       statusCode: 500,
       headers: { "Content-Type": "application/json" },
