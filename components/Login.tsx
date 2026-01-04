@@ -4,6 +4,118 @@ import { TRANSLATIONS } from '../constants';
 import { Language } from '../types';
 import { Mail, ArrowRight, CheckCircle, Lock, ClipboardList, X, Shield, User, Building, Calendar, Phone, MapPin } from 'lucide-react';
 
+/**
+ * HILFSKOMPONENTEN (Außerhalb der Hauptkomponente definiert für stabiles Rendering)
+ */
+
+const InputField = ({ label, icon: Icon, value, onChange, placeholder, required = true, type = "text", optionalLabel }: any) => (
+  <div className="flex flex-col gap-1.5">
+      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+        {label} {!required && optionalLabel && <span className="opacity-40 font-medium">({optionalLabel})</span>}
+      </label>
+      <div className="relative">
+          <input 
+              required={required} 
+              type={type}
+              value={value} 
+              onChange={e => onChange(e.target.value)}
+              placeholder={placeholder}
+              className="w-full p-3.5 bg-slate-950/50 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-blue-500 transition-all pl-11"
+          />
+          <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+      </div>
+  </div>
+);
+
+interface RegisterFormProps {
+    t: any;
+    regForm: any;
+    setRegForm: (val: any) => void;
+    onSubmit: (e: React.FormEvent) => void;
+}
+
+const RegisterFormContent = ({ t, regForm, setRegForm, onSubmit }: RegisterFormProps) => (
+    <div className="p-10 md:p-14">
+        <div className="mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 rounded-full border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-4">
+                <ClipboardList size={12} /> {t.registerProd}
+            </div>
+            <h2 className="text-4xl font-black uppercase tracking-tight text-white">{t.regTitle}</h2>
+            <p className="text-slate-500 mt-2 font-medium">{t.regDesc}</p>
+        </div>
+
+        <form onSubmit={onSubmit} className="space-y-10">
+                {/* Section: Projekt */}
+                <div className="space-y-4">
+                <div className="flex items-center gap-2 text-slate-400 mb-2">
+                    <Building size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.generalInfo}</span>
+                </div>
+                <InputField label={t.prodName} icon={Building} value={regForm.productionName} onChange={(v:any) => setRegForm({...regForm, productionName: v})} placeholder="z.B. Tatort München" />
+                </div>
+
+                {/* Section: Personen */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-slate-400 mb-2">
+                        <User size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.role}: PL</span>
+                    </div>
+                    <InputField label={t.nameLabel} icon={User} value={regForm.managerName} onChange={(v:any) => setRegForm({...regForm, managerName: v})} placeholder="Max Mustermann" />
+                    <InputField label={t.emailLabel} type="email" icon={Mail} value={regForm.managerEmail} onChange={(v:any) => setRegForm({...regForm, managerEmail: v})} placeholder="max@produktion.de" />
+                </div>
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-slate-400 mb-2">
+                        <User size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.role}: Coord.</span>
+                    </div>
+                    <InputField required={false} optionalLabel={t.optional} label={t.nameLabel} icon={User} value={regForm.coordinatorName} onChange={(v:any) => setRegForm({...regForm, coordinatorName: v})} placeholder="Julia Schmidt" />
+                    <InputField required={false} optionalLabel={t.optional} label={t.emailLabel} type="email" icon={Mail} value={regForm.coordinatorEmail} onChange={(v:any) => setRegForm({...regForm, coordinatorEmail: v})} placeholder="julia@produktion.de" />
+                </div>
+                </div>
+
+                {/* Section: Zeitraum */}
+                <div className="pt-4 border-t border-white/5 space-y-4">
+                <div className="flex items-center gap-2 text-slate-400 mb-2">
+                    <Calendar size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.period}</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <InputField label="Start MM" icon={Calendar} value={regForm.startMonth} onChange={(v:any) => setRegForm({...regForm, startMonth: v})} placeholder="05" />
+                    <InputField label="Start JJJJ" icon={Calendar} value={regForm.startYear} onChange={(v:any) => setRegForm({...regForm, startYear: v})} placeholder="2025" />
+                    <InputField label="Ende MM" icon={Calendar} value={regForm.endMonth} onChange={(v:any) => setRegForm({...regForm, endMonth: v})} placeholder="08" />
+                    <InputField label="Ende JJJJ" icon={Calendar} value={regForm.endYear} onChange={(v:any) => setRegForm({...regForm, endYear: v})} placeholder="2025" />
+                </div>
+                </div>
+
+                {/* Section: Adressen & Kontakt */}
+                <div className="pt-4 border-t border-white/5 space-y-6">
+                <div className="flex items-center gap-2 text-slate-400 mb-2">
+                    <MapPin size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.officeAddr} & {t.billingAddr}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t.billingAddr}</label>
+                        <textarea required rows={3} value={regForm.billingAddress} onChange={e => setRegForm({...regForm, billingAddress: e.target.value})} className="w-full p-4 bg-slate-950/50 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-blue-500 resize-none" placeholder="Firma, Straße, PLZ, Ort" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t.officeAddr}</label>
+                        <textarea required rows={3} value={regForm.officeAddress} onChange={e => setRegForm({...regForm, officeAddress: e.target.value})} className="w-full p-4 bg-slate-950/50 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-blue-500 resize-none" placeholder="Straße, Ort, Motiv..." />
+                    </div>
+                </div>
+                <InputField required={false} optionalLabel={t.optional} label="Telefon Rückfragen" icon={Phone} type="tel" value={regForm.phone} onChange={(v:any) => setRegForm({...regForm, phone: v})} placeholder="+49 123 456789" />
+                </div>
+
+                <div className="pt-10">
+                <button type="submit" className="w-full py-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-[20px] uppercase tracking-[0.2em] shadow-xl shadow-blue-900/50 transition-all flex items-center justify-center gap-3 group">
+                    {t.submit} <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                </button>
+                <p className="text-center text-slate-600 text-[10px] uppercase font-bold tracking-widest mt-6">Sie erhalten eine Kopie per E-Mail nach der Freischaltung.</p>
+                </div>
+        </form>
+    </div>
+);
+
+/**
+ * HAUPTKOMPONENTE
+ */
+
 interface LoginProps {
   onLogin: (email: string) => void;
   lang: Language;
@@ -76,25 +188,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
     onRegister(payload);
     setRegSuccess(true);
   };
-
-  const InputField = ({ label, icon: Icon, value, onChange, placeholder, required = true, type = "text" }: any) => (
-    <div className="flex flex-col gap-1.5">
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-          {label} {!required && <span className="opacity-40 font-medium">({t.optional})</span>}
-        </label>
-        <div className="relative">
-            <input 
-                required={required} 
-                type={type}
-                value={value} 
-                onChange={e => onChange(e.target.value)}
-                placeholder={placeholder}
-                className="w-full p-3.5 bg-slate-950/50 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-blue-500 transition-all pl-11"
-            />
-            <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-        </div>
-    </div>
-  );
 
   return (
     <div className={`min-h-screen flex flex-col items-center justify-center bg-[#0f172a] text-white p-6 relative overflow-hidden ${lang === 'ar' ? 'font-tajawal' : ''}`} dir={t.dir}>
@@ -169,81 +262,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
                         </button>
                     </div>
                 ) : (
-                    <div className="p-10 md:p-14">
-                        <div className="mb-12">
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 rounded-full border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-4">
-                                <ClipboardList size={12} /> {t.registerProd}
-                            </div>
-                            <h2 className="text-4xl font-black uppercase tracking-tight text-white">{t.regTitle}</h2>
-                            <p className="text-slate-500 mt-2 font-medium">{t.regDesc}</p>
-                        </div>
-
-                        <form onSubmit={handleRegisterSubmit} className="space-y-10">
-                             {/* Section: Projekt */}
-                             <div className="space-y-4">
-                                <div className="flex items-center gap-2 text-slate-400 mb-2">
-                                    <Building size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.generalInfo}</span>
-                                </div>
-                                <InputField label={t.prodName} icon={Building} value={regForm.productionName} onChange={(v:any) => setRegForm({...regForm, productionName: v})} placeholder="z.B. Tatort München" />
-                             </div>
-
-                             {/* Section: Personen */}
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 text-slate-400 mb-2">
-                                        <User size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.role}: PL</span>
-                                    </div>
-                                    <InputField label={t.nameLabel} icon={User} value={regForm.managerName} onChange={(v:any) => setRegForm({...regForm, managerName: v})} placeholder="Max Mustermann" />
-                                    <InputField label={t.emailLabel} type="email" icon={Mail} value={regForm.managerEmail} onChange={(v:any) => setRegForm({...regForm, managerEmail: v})} placeholder="max@produktion.de" />
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 text-slate-400 mb-2">
-                                        <User size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.role}: Coord.</span>
-                                    </div>
-                                    <InputField required={false} label={t.nameLabel} icon={User} value={regForm.coordinatorName} onChange={(v:any) => setRegForm({...regForm, coordinatorName: v})} placeholder="Julia Schmidt" />
-                                    <InputField required={false} label={t.emailLabel} type="email" icon={Mail} value={regForm.coordinatorEmail} onChange={(v:any) => setRegForm({...regForm, coordinatorEmail: v})} placeholder="julia@produktion.de" />
-                                </div>
-                             </div>
-
-                             {/* Section: Zeitraum */}
-                             <div className="pt-4 border-t border-white/5 space-y-4">
-                                <div className="flex items-center gap-2 text-slate-400 mb-2">
-                                    <Calendar size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.period}</span>
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <InputField label="Start MM" icon={Calendar} value={regForm.startMonth} onChange={(v:any) => setRegForm({...regForm, startMonth: v})} placeholder="05" />
-                                    <InputField label="Start JJJJ" icon={Calendar} value={regForm.startYear} onChange={(v:any) => setRegForm({...regForm, startYear: v})} placeholder="2025" />
-                                    <InputField label="Ende MM" icon={Calendar} value={regForm.endMonth} onChange={(v:any) => setRegForm({...regForm, endMonth: v})} placeholder="08" />
-                                    <InputField label="Ende JJJJ" icon={Calendar} value={regForm.endYear} onChange={(v:any) => setRegForm({...regForm, endYear: v})} placeholder="2025" />
-                                </div>
-                             </div>
-
-                             {/* Section: Adressen & Kontakt */}
-                             <div className="pt-4 border-t border-white/5 space-y-6">
-                                <div className="flex items-center gap-2 text-slate-400 mb-2">
-                                    <MapPin size={16} /> <span className="text-xs font-black uppercase tracking-widest">{t.officeAddr} & {t.billingAddr}</span>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t.billingAddr}</label>
-                                        <textarea required rows={3} value={regForm.billingAddress} onChange={e => setRegForm({...regForm, billingAddress: e.target.value})} className="w-full p-4 bg-slate-950/50 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-blue-500 resize-none" placeholder="Firma, Straße, PLZ, Ort" />
-                                    </div>
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t.officeAddr}</label>
-                                        <textarea required rows={3} value={regForm.officeAddress} onChange={e => setRegForm({...regForm, officeAddress: e.target.value})} className="w-full p-4 bg-slate-950/50 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-blue-500 resize-none" placeholder="Straße, Ort, Motiv..." />
-                                    </div>
-                                </div>
-                                <InputField required={false} label="Telefon Rückfragen" icon={Phone} type="tel" value={regForm.phone} onChange={(v:any) => setRegForm({...regForm, phone: v})} placeholder="+49 123 456789" />
-                             </div>
-
-                             <div className="pt-10">
-                                <button type="submit" className="w-full py-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-[20px] uppercase tracking-[0.2em] shadow-xl shadow-blue-900/50 transition-all flex items-center justify-center gap-3 group">
-                                    {t.submit} <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-                                </button>
-                                <p className="text-center text-slate-600 text-[10px] uppercase font-bold tracking-widest mt-6">Sie erhalten eine Kopie per E-Mail nach der Freischaltung.</p>
-                             </div>
-                        </form>
-                    </div>
+                    <RegisterFormContent 
+                        t={t} 
+                        regForm={regForm} 
+                        setRegForm={setRegForm} 
+                        onSubmit={handleRegisterSubmit} 
+                    />
                 )}
               </div>
           </div>
