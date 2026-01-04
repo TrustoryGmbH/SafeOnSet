@@ -26,38 +26,14 @@
               tajawal: ['Tajawal', 'sans-serif'],
             },
             keyframes: {
-              'zoom-in': {
-                '0%': { transform: 'scale(0)' },
-                '100%': { transform: 'scale(1)' },
-              },
-              'fade-in': {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              'float': {
-                '0%, 100%': { transform: 'translateY(0px)' },
-                '50%': { transform: 'translateY(-10px)' },
-              },
-              'blink': {
-                '0%, 90%, 100%': { transform: 'scaleY(1)' },
-                '95%': { transform: 'scaleY(0.1)' },
-              },
-              'shimmer-slide': {
-                '0%': { transform: 'translateX(-100%) skewX(-12deg)' },
-                '100%': { transform: 'translateX(200%) skewX(-12deg)' },
-              },
-              'spin-slow': {
-                '0%': { transform: 'rotate(0deg)' },
-                '100%': { transform: 'rotate(360deg)' },
-              },
-              'typing': {
-                'from': { width: '0' },
-                'to': { width: '100%' }
-              },
-              'cursor-blink': {
-                'from, to': { borderColor: 'transparent' },
-                '50%': { borderColor: '#3b82f6' }
-              }
+              'zoom-in': { '0%': { transform: 'scale(0)' }, '100%': { transform: 'scale(1)' } },
+              'fade-in': { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+              'float': { '0%, 100%': { transform: 'translateY(0px)' }, '50%': { transform: 'translateY(-10px)' } },
+              'blink': { '0%, 90%, 100%': { transform: 'scaleY(1)' }, '95%': { transform: 'scaleY(0.1)' } },
+              'shimmer-slide': { '0%': { transform: 'translateX(-100%) skewX(-12deg)' }, '100%': { transform: 'translateX(200%) skewX(-12deg)' } },
+              'spin-slow': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } },
+              'typing': { 'from': { width: '0' }, 'to': { width: '100%' } },
+              'cursor-blink': { 'from, to': { borderColor: 'transparent' }, '50%': { borderColor: '#3b82f6' } }
             },
             animation: {
               'zoom-in': 'zoom-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
@@ -91,7 +67,8 @@
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "qrcode.react": "https://aistudiocdn.com/qrcode.react@^4.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "buffer": "https://esm.sh/buffer@^6.0.3"
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm"
   }
 }
 </script>
