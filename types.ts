@@ -18,10 +18,23 @@ export interface ShootDay {
 
 export interface AccessRequest {
   id: string;
+  request_type: 'test' | 'production';
   first_name?: string;
   last_name?: string;
-  name: string; // Combined for legacy or display
-  email: string;
+  name?: string; // Production Name or Person Name
+  email: string; // Contact Email
+  
+  // New Production Specific Fields
+  manager_name?: string;
+  manager_email?: string;
+  coordinator_name?: string;
+  coordinator_email?: string;
+  start_period?: string; // e.g. "05/2025"
+  end_period?: string;
+  billing_address?: string;
+  office_address?: string;
+  phone?: string;
+  
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
 }

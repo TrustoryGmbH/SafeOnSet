@@ -81,27 +81,29 @@ function App() {
     }
   };
 
-  const handleRegisterAccess = async (form: any) => {
-    await supabase.from('access_requests').insert([{
-        name: form.name,
-        email: form.email,
-        status: 'pending'
-    }]);
+  const handleRegisterAccess = async (payload: any) => {
+    try {
+        const { error } = await supabase.from('access_requests').insert([payload]);
+        if (error) throw error;
+    } catch (err: any) {
+        console.error("Registration failed:", err);
+        // Fallback Alert wird in Komponenten gehandhabt
+    }
   };
 
   const handleSendOTP = async (email: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setExpectedOTP(code);
-    
-    console.log(`[DEV] Sending OTP ${code} to ${email}`);
-    
     try {
         await fetch('/.netlify/functions/send-email', {
             method: 'POST',
             body: JSON.stringify({
                 to: email,
-                subject: "Your Trustory Login Code",
-                html: `<h1>${code}</h1><p>Enter this code to access your production dashboard.</p>`
+                subject: "Ihr Trustory Login Code",
+                html: `<div style="font-family: sans-serif; text-align: center; padding: 40px;">
+                        <h1 style="color: #2563eb; font-size: 48px; letter-spacing: 0.2em;">${code}</h1>
+                        <p style="color: #64748b;">Geben Sie diesen Code ein, um auf Ihr Dashboard zuzugreifen.</p>
+                       </div>`
             })
         });
         return true;
@@ -132,9 +134,9 @@ function App() {
         onEnterTestCode={handleTestCodeEntry}
         onTestAccess={(type) => {
             if (type === 'code') {
-               // Modal logic is handled inside LandingPage now
+               // Modal-Logik wird in LandingPage gehandhabt
             } else {
-               setView('login'); // Triggers the request modal on login page
+               setView('login');
             }
         }} 
     />
@@ -179,31 +181,14 @@ function App() {
     <div className={`h-screen w-full bg-[#0f172a] text-white flex flex-col relative ${lang === 'ar' ? 'font-tajawal' : ''}`} dir={t.dir}>
       <header className="h-[75px] border-b border-white/5 flex justify-between items-center px-10 bg-slate-900/50 backdrop-blur-md">
         <div className="flex items-center gap-4">
-          <div className="font-bold text-xl tracking-tight">
+          <div className="font-bold text-xl tracking-tight text-white">
             Safe on Set <span className="opacity-20 mx-1">/</span> 
-            <span className={isSandboxMode ? 'text-blue-400' : 'text-blue-400'}>{currentProduction?.name || 'Management'}</span>
+            <span className="text-blue-400">{currentProduction?.name || 'Management'}</span>
           </div>
-          
           <div className={`flex items-center gap-1.5 px-3 py-1 ${isConnected ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} border rounded-full`}>
-            {isConnected ? (
-              <>
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">{isSandboxMode ? 'Sandbox' : 'Live Cloud'}</span>
-              </>
-            ) : (
-              <>
-                <WifiOff size={10} className="text-rose-500" />
-                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Offline</span>
-              </>
-            )}
+            {isConnected ? <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> : <WifiOff size={10} className="text-rose-500" />}
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? 'text-emerald-500' : 'text-rose-500'}`}>{isConnected ? (isSandboxMode ? 'Sandbox' : 'Live Cloud') : 'Offline'}</span>
           </div>
-
-          {isSandboxMode && (
-              <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">
-                  <Beaker size={12} className="text-blue-400" />
-                  <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Test Access</span>
-              </div>
-          )}
         </div>
         <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { setIsSandboxMode(false); setView('landing'); }}>
           <LogOut size={14} />{t.logout}
