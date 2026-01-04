@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TRANSLATIONS } from '../constants';
 import { Language, Production, AccessRequest } from '../types';
-import { LogOut, Plus, Send, ShieldCheck, Mail, BarChart2, X, Settings, Edit2, Save, XCircle, Calendar, MapPin, Building, Shield, Check, Trash2, Clock, AlertCircle } from 'lucide-react';
+import { LogOut, Plus, Send, ShieldCheck, Mail, BarChart2, X, Settings, Edit2, Save, XCircle, Calendar, MapPin, Building, Shield, Check, Trash2, Clock, AlertCircle, Copy, Terminal } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 interface AdminDashboardProps {
@@ -21,12 +21,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'productions' | 'requests'>('productions');
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
   
-  // States for Production Management
+  const [managingProductionId, setManagingProductionId] = useState<string | null>(null);
   const [newProdName, setNewProdName] = useState('');
   const [newCoordName, setNewCoordName] = useState('');
   const [newEmail, setNewEmail] = useState('');
-  const [managingProductionId, setManagingProductionId] = useState<string | null>(null);
+
+  const SQL_SETUP = `CREATE TABLE IF NOT EXISTS access_requests (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  first_name TEXT,
+  last_name TEXT,
+  name TEXT,
+  email TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT now()
+);`;
 
   useEffect(() => {
     if (activeTab === 'requests') {
@@ -36,12 +46,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const fetchRequests = async () => {
     setIsLoadingRequests(true);
+    setDbError(null);
     try {
         const { data, error } = await supabase.from('access_requests').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         setAccessRequests(data || []);
     } catch (err: any) {
         console.error("Error fetching requests:", err);
+        if (err.message?.includes('not find the table')) {
+            setDbError("TableMissing");
+        } else {
+            setDbError(err.message);
+        }
     } finally {
         setIsLoadingRequests(false);
     }
@@ -52,44 +68,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const { error } = await supabase.from('access_requests').update({ status: 'approved' }).eq('id', req.id);
         if (error) throw error;
 
-        // Trigger confirmation email
         await fetch('/.netlify/functions/send-email', {
             method: 'POST',
             body: JSON.stringify({
                 to: req.email,
                 subject: "Ihr Trustory Test-Zugang wurde freigeschaltet",
-                html: `
-                    <div style="font-family: sans-serif; color: #0f172a; padding: 40px; border: 1px solid #e2e8f0; border-radius: 20px; max-width: 600px; margin: auto;">
-                        <h1 style="color: #2563eb; font-weight: 900; text-transform: uppercase; margin-bottom: 20px;">Willkommen bei Trustory</h1>
-                        <p style="font-size: 16px; line-height: 1.5;">Hallo ${req.first_name || req.name || 'Test-User'},</p>
-                        <p style="font-size: 16px; line-height: 1.5;">Ihre Anfrage für den kostenfreien Test-Zugang wurde erfolgreich geprüft und freigeschaltet.</p>
-                        <div style="background: #f8fafc; padding: 30px; border-radius: 20px; border: 2px dashed #cbd5e1; margin: 30px 0; text-align: center;">
-                            <p style="margin: 0; font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.2em;">Ihr Zugangscode</p>
-                            <h2 style="margin: 10px 0 0 0; font-size: 42px; font-weight: 900; letter-spacing: 0.3em; color: #2563eb;">XPLM2</h2>
-                        </div>
-                        <p style="font-size: 16px; line-height: 1.5;">Besuchen Sie <a href="https://safe-on-set.com" style="color: #2563eb; font-weight: bold; text-decoration: none;">safe-on-set.com</a> und klicken Sie auf <strong>"Test-Zugang"</strong> -> <strong>"Code Eingeben"</strong>.</p>
-                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 40px 0;">
-                        <p style="font-size: 11px; color: #94a3b8; text-align: center;">Dies ist ein isolierter Sandbox-Account für Demonstrationszwecke. Alle Daten werden nach der Sitzung zurückgesetzt.</p>
-                    </div>
-                `
+                html: `<div style="font-family: sans-serif; padding: 40px;"><h1>Willkommen!</h1><p>Code: <b>XPLM2</b></p></div>`
             })
         });
-        alert(`Request for ${req.email} approved and email sent successfully.`);
+        alert(`Anfrage für ${req.email} genehmigt.`);
         fetchRequests();
     } catch (e: any) {
-        alert(`Error: ${e.message || e}`);
+        alert(`Fehler: ${e.message}`);
     }
   };
 
   const handleRejectRequest = async (id: string) => {
-    if (!confirm("Anfrage wirklich löschen?")) return;
-    try {
-        const { error } = await supabase.from('access_requests').delete().eq('id', id);
-        if (error) throw error;
-        fetchRequests();
-    } catch (err: any) {
-        alert("Error deleting request.");
-    }
+    if (!confirm("Anfrage löschen?")) return;
+    await supabase.from('access_requests').delete().eq('id', id);
+    fetchRequests();
   };
 
   return (
@@ -107,14 +104,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all relative ${activeTab === 'requests' ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
                 {t.pendingRequests}
                 {accessRequests.filter(r => r.status === 'pending').length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-[10px] flex items-center justify-center rounded-full animate-pulse">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-[10px] flex items-center justify-center rounded-full">
                     {accessRequests.filter(r => r.status === 'pending').length}
                   </span>
                 )}
               </button>
            </nav>
         </div>
-        <button onClick={onLogout} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-bold bg-white/5 px-4 py-2 rounded-xl border border-white/5 transition-all">
+        <button onClick={onLogout} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-bold bg-white/5 px-4 py-2 rounded-xl border border-white/5">
             <LogOut size={16} /> {t.logout}
         </button>
       </header>
@@ -164,62 +161,74 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
            </>
         ) : (
-           <div className="bg-slate-800 border border-white/10 rounded-2xl overflow-hidden shadow-lg min-h-[400px]">
-              <table className="w-full text-left">
-                  <thead className="bg-slate-950/50 text-slate-400 text-[10px] uppercase font-bold border-b border-white/10">
-                      <tr>
-                          <th className="p-4">Person</th>
-                          <th className="p-4">Email</th>
-                          <th className="p-4">Date</th>
-                          <th className="p-4">Status</th>
-                          <th className="p-4 text-right">Actions</th>
-                      </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                      {accessRequests.map(req => (
-                          <tr key={req.id} className="hover:bg-white/5 transition-colors group">
-                              <td className="p-4">
-                                 <div className="font-bold text-slate-100 flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-[10px] border border-purple-500/20">
-                                        {(req.first_name?.[0] || req.name?.[0] || '?').toUpperCase()}
-                                    </div>
-                                    {req.first_name || ''} {req.last_name || req.name || 'Unbekannt'}
-                                 </div>
-                              </td>
-                              <td className="p-4 text-slate-400 text-sm">{req.email}</td>
-                              <td className="p-4 text-slate-500 text-xs">{new Date(req.created_at).toLocaleDateString('de-DE')}</td>
-                              <td className="p-4">
-                                 <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${req.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                                    {req.status}
-                                 </span>
-                              </td>
-                              <td className="p-4 text-right flex justify-end gap-2">
-                                  {req.status === 'pending' && (
-                                    <button 
-                                        onClick={() => handleApproveRequest(req)} 
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/10 text-emerald-500 rounded-lg hover:bg-emerald-600 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider"
-                                        title="Freischalten & E-Mail senden"
-                                    >
-                                        <Check size={14} /> Genehmigen
-                                    </button>
-                                  )}
-                                  <button onClick={() => handleRejectRequest(req.id)} className="p-2 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 text-white transition-all"><Trash2 size={16} /></button>
-                              </td>
-                          </tr>
-                      ))}
-                  </tbody>
-              </table>
-              {isLoadingRequests && (
-                  <div className="flex flex-col items-center justify-center p-20 text-slate-500">
-                      <Clock className="animate-spin mb-2" size={32} />
-                      <p className="text-xs font-bold uppercase tracking-widest">Lade Anfragen...</p>
+           <div className="bg-slate-800 border border-white/10 rounded-2xl overflow-hidden shadow-lg min-h-[400px] flex flex-col">
+              {dbError === 'TableMissing' ? (
+                  <div className="flex-1 p-12 flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
+                      <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500 mb-6 border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.1)]">
+                          <Terminal size={40} />
+                      </div>
+                      <h3 className="text-2xl font-black mb-2 uppercase tracking-tight">Datenbank-Setup erforderlich</h3>
+                      <p className="text-slate-400 max-w-md mb-8 text-sm leading-relaxed">
+                          Die Tabelle für die Zugangsanfragen fehlt in Supabase. Kopiere den folgenden Code und füge ihn im <b>SQL Editor</b> deines Supabase-Dashboards ein:
+                      </p>
+                      
+                      <div className="w-full max-w-lg bg-slate-950 rounded-2xl border border-white/10 p-6 relative group mb-8">
+                          <pre className="text-blue-400 text-left text-xs font-mono overflow-x-auto">
+                              {SQL_SETUP}
+                          </pre>
+                          <button 
+                            onClick={() => { navigator.clipboard.writeText(SQL_SETUP); alert("Copied!"); }}
+                            className="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                              <Copy size={16} />
+                          </button>
+                      </div>
+                      
+                      <button onClick={fetchRequests} className="px-8 py-3 bg-blue-600 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-blue-500 transition-all">
+                          Verbindung prüfen
+                      </button>
                   </div>
-              )}
-              {!isLoadingRequests && accessRequests.length === 0 && (
-                  <div className="flex flex-col items-center justify-center p-20 text-slate-500">
-                      <AlertCircle className="mb-4 opacity-20" size={64} />
-                      <p className="text-sm font-medium italic">Bisher keine Zugangsanfragen vorhanden.</p>
-                  </div>
+              ) : (
+                  <>
+                      <table className="w-full text-left">
+                          <thead className="bg-slate-950/50 text-slate-400 text-[10px] uppercase font-bold border-b border-white/10">
+                              <tr>
+                                  <th className="p-4">Person</th>
+                                  <th className="p-4">Email</th>
+                                  <th className="p-4">Date</th>
+                                  <th className="p-4">Status</th>
+                                  <th className="p-4 text-right">Actions</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {accessRequests.map(req => (
+                                  <tr key={req.id} className="hover:bg-white/5 transition-colors group">
+                                      <td className="p-4 font-bold">
+                                         {req.first_name || ''} {req.last_name || req.name || 'Unbekannt'}
+                                      </td>
+                                      <td className="p-4 text-slate-400 text-sm">{req.email}</td>
+                                      <td className="p-4 text-slate-500 text-xs">{new Date(req.created_at).toLocaleDateString()}</td>
+                                      <td className="p-4">
+                                         <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${req.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                            {req.status}
+                                         </span>
+                                      </td>
+                                      <td className="p-4 text-right flex justify-end gap-2">
+                                          {req.status === 'pending' && (
+                                            <button onClick={() => handleApproveRequest(req)} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/10 text-emerald-500 rounded-lg hover:bg-emerald-600 hover:text-white transition-all text-[10px] font-bold uppercase"><Check size={14} /> Approve</button>
+                                          )}
+                                          <button onClick={() => handleRejectRequest(req.id)} className="p-2 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 text-white transition-all"><Trash2 size={16} /></button>
+                                      </td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                      {accessRequests.length === 0 && !isLoadingRequests && (
+                          <div className="flex-1 flex flex-col items-center justify-center p-20 text-slate-500 italic">
+                             Keine Anfragen gefunden.
+                          </div>
+                      )}
+                  </>
               )}
            </div>
         )}
