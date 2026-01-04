@@ -28,7 +28,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newCoordName, setNewCoordName] = useState('');
   const [newEmail, setNewEmail] = useState('');
 
-  const SQL_SETUP = `CREATE TABLE IF NOT EXISTS access_requests (
+  // Vollständiges Schema für alle benötigten Tabellen
+  const SQL_SETUP = `-- 1. Tabelle für Test-Zugangsanfragen
+CREATE TABLE IF NOT EXISTS access_requests (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   first_name TEXT,
   last_name TEXT,
@@ -36,6 +38,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   email TEXT NOT NULL,
   status TEXT DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. Tabelle für Filmproduktionen
+CREATE TABLE IF NOT EXISTS productions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  coordinator TEXT NOT NULL,
+  email TEXT NOT NULL,
+  status TEXT DEFAULT 'Pending',
+  team JSONB DEFAULT '[]',
+  country TEXT,
+  period_start DATE,
+  period_end DATE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. Tabelle für Feedback-Nachrichten
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  date TIMESTAMPTZ DEFAULT now(),
+  text TEXT,
+  contact TEXT,
+  score INTEGER,
+  department TEXT,
+  resolved BOOLEAN DEFAULT false
+);
+
+-- 4. Tabelle für Drehtage
+CREATE TABLE IF NOT EXISTS shoot_days (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  day INTEGER,
+  date TEXT
 );`;
 
   useEffect(() => {
@@ -53,7 +87,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setAccessRequests(data || []);
     } catch (err: any) {
         console.error("Error fetching requests:", err);
-        if (err.message?.includes('not find the table')) {
+        if (err.message?.includes('not find the table') || err.message?.includes('does not exist')) {
             setDbError("TableMissing");
         } else {
             setDbError(err.message);
@@ -73,10 +107,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             body: JSON.stringify({
                 to: req.email,
                 subject: "Ihr Trustory Test-Zugang wurde freigeschaltet",
-                html: `<div style="font-family: sans-serif; padding: 40px;"><h1>Willkommen!</h1><p>Code: <b>XPLM2</b></p></div>`
+                html: `
+                    <div style="font-family: sans-serif; padding: 40px; border: 1px solid #e2e8f0; border-radius: 20px; max-width: 600px;">
+                        <h1 style="color: #2563eb;">Willkommen bei Trustory</h1>
+                        <p>Hallo ${req.first_name || req.name},</p>
+                        <p>Ihre Anfrage für den kostenfreien Test-Zugang wurde erfolgreich geprüft und freigeschaltet.</p>
+                        <div style="background: #f1f5f9; padding: 30px; border-radius: 12px; margin: 30px 0; text-align: center;">
+                            <p style="margin: 0; font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em;">Ihr Zugangscode</p>
+                            <h2 style="margin: 10px 0 0 0; font-size: 32px; font-weight: 900; letter-spacing: 0.3em; color: #0f172a;">XPLM2</h2>
+                        </div>
+                        <p>Gehen Sie auf <a href="https://safe-on-set.com">safe-on-set.com</a> und klicken Sie auf <b>"Test-Zugang"</b> -> <b>"Code Eingeben"</b>.</p>
+                    </div>
+                `
             })
         });
-        alert(`Anfrage für ${req.email} genehmigt.`);
+        alert(`Anfrage für ${req.email} genehmigt und E-Mail versendet.`);
         fetchRequests();
     } catch (e: any) {
         alert(`Fehler: ${e.message}`);
@@ -167,25 +212,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500 mb-6 border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.1)]">
                           <Terminal size={40} />
                       </div>
-                      <h3 className="text-2xl font-black mb-2 uppercase tracking-tight">Datenbank-Setup erforderlich</h3>
+                      <h3 className="text-2xl font-black mb-2 uppercase tracking-tight text-white">Datenbank-Setup erforderlich</h3>
                       <p className="text-slate-400 max-w-md mb-8 text-sm leading-relaxed">
-                          Die Tabelle für die Zugangsanfragen fehlt in Supabase. Kopiere den folgenden Code und füge ihn im <b>SQL Editor</b> deines Supabase-Dashboards ein:
+                          Die Tabellen fehlen in Supabase. Kopiere den folgenden Block und füge ihn im <b>SQL Editor</b> deines Supabase-Dashboards ein:
                       </p>
                       
                       <div className="w-full max-w-lg bg-slate-950 rounded-2xl border border-white/10 p-6 relative group mb-8">
-                          <pre className="text-blue-400 text-left text-xs font-mono overflow-x-auto">
+                          <pre className="text-blue-400 text-left text-[10px] font-mono overflow-x-auto leading-normal">
                               {SQL_SETUP}
                           </pre>
                           <button 
-                            onClick={() => { navigator.clipboard.writeText(SQL_SETUP); alert("Copied!"); }}
-                            className="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all opacity-0 group-hover:opacity-100"
+                            onClick={() => { navigator.clipboard.writeText(SQL_SETUP); alert("SQL Kopiert!"); }}
+                            className="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all"
+                            title="Kopieren"
                           >
                               <Copy size={16} />
                           </button>
                       </div>
                       
                       <button onClick={fetchRequests} className="px-8 py-3 bg-blue-600 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-blue-500 transition-all">
-                          Verbindung prüfen
+                          Verbindung erneut prüfen
                       </button>
                   </div>
               ) : (
@@ -195,19 +241,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <tr>
                                   <th className="p-4">Person</th>
                                   <th className="p-4">Email</th>
-                                  <th className="p-4">Date</th>
+                                  <th className="p-4">Datum</th>
                                   <th className="p-4">Status</th>
-                                  <th className="p-4 text-right">Actions</th>
+                                  <th className="p-4 text-right">Aktionen</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
                               {accessRequests.map(req => (
                                   <tr key={req.id} className="hover:bg-white/5 transition-colors group">
-                                      <td className="p-4 font-bold">
-                                         {req.first_name || ''} {req.last_name || req.name || 'Unbekannt'}
+                                      <td className="p-4">
+                                         <div className="font-bold text-slate-100 flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-[10px] border border-blue-500/20 text-blue-400 font-black">
+                                                {(req.first_name?.[0] || req.name?.[0] || '?').toUpperCase()}
+                                            </div>
+                                            {req.first_name || ''} {req.last_name || req.name || 'Unbekannt'}
+                                         </div>
                                       </td>
                                       <td className="p-4 text-slate-400 text-sm">{req.email}</td>
-                                      <td className="p-4 text-slate-500 text-xs">{new Date(req.created_at).toLocaleDateString()}</td>
+                                      <td className="p-4 text-slate-500 text-xs">{new Date(req.created_at).toLocaleDateString('de-DE')}</td>
                                       <td className="p-4">
                                          <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${req.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
                                             {req.status}
@@ -215,7 +266,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       </td>
                                       <td className="p-4 text-right flex justify-end gap-2">
                                           {req.status === 'pending' && (
-                                            <button onClick={() => handleApproveRequest(req)} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/10 text-emerald-500 rounded-lg hover:bg-emerald-600 hover:text-white transition-all text-[10px] font-bold uppercase"><Check size={14} /> Approve</button>
+                                            <button 
+                                                onClick={() => handleApproveRequest(req)} 
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/10 text-emerald-500 rounded-lg hover:bg-emerald-600 hover:text-white transition-all text-[10px] font-bold uppercase"
+                                            >
+                                                <Check size={14} /> Approve
+                                            </button>
                                           )}
                                           <button onClick={() => handleRejectRequest(req.id)} className="p-2 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 text-white transition-all"><Trash2 size={16} /></button>
                                       </td>
