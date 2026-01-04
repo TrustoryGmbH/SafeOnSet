@@ -34,16 +34,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
     e.preventDefault();
     setIsSubmitting(true);
     try {
-        await supabase.from('access_requests').insert([{
+        const { error } = await supabase.from('access_requests').insert([{
             first_name: reqForm.firstName,
             last_name: reqForm.lastName,
             name: `${reqForm.firstName} ${reqForm.lastName}`,
             email: reqForm.email,
             status: 'pending'
         }]);
+        
+        if (error) throw error;
         setIsSuccess(true);
-    } catch (err) {
-        alert("Fehler beim Senden der Anfrage.");
+    } catch (err: any) {
+        console.error("Supabase Insertion Error:", err);
+        alert(`Fehler beim Senden der Anfrage: ${err.message || 'Bitte prüfen Sie die Datenbank-Struktur.'}`);
     } finally {
         setIsSubmitting(false);
     }
@@ -127,7 +130,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
          </div>
       </main>
 
-      {/* Restoration of missing sections */}
       <section className="relative z-10 py-32 bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-3 gap-12">
           {features.map((f) => (
@@ -222,10 +224,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
                             <div className="text-center py-6 animate-in slide-in-from-bottom-4">
                                 <CheckCircle size={64} className="text-emerald-500 mx-auto mb-6" />
                                 <h3 className="text-2xl font-black mb-3 uppercase tracking-tight text-white">{t.regSuccess}</h3>
-                                <p className="text-slate-400 text-sm leading-relaxed">
+                                <p className="text-slate-400 text-sm leading-relaxed mb-8">
                                     Ihre Daten sind eingegangen. Nach Überprüfung erhalten Sie Ihren kostenfreien Zugang per E-Mail.
                                 </p>
-                                <button onClick={closeModal} className="mt-8 w-full py-4 bg-slate-800 text-white font-black rounded-xl uppercase tracking-widest border border-white/5">Schließen</button>
+                                <button onClick={closeModal} className="w-full py-5 bg-blue-600 text-white font-black rounded-xl uppercase tracking-widest shadow-lg shadow-blue-900/30 transition-all hover:bg-blue-500">
+                                    {t.close}
+                                </button>
                             </div>
                         ) : (
                             <form onSubmit={handleRequestSubmit} className="space-y-4">
@@ -287,9 +291,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
                     )}
                  </div>
                  
-                 <div className="p-6 bg-slate-950/50 flex justify-end">
-                    <button onClick={closeModal} className="px-8 py-3 bg-slate-800 text-white text-[10px] font-black rounded-xl uppercase tracking-widest border border-white/5">{t.close}</button>
-                 </div>
+                 {/* Only show footer on form view, not success view */}
+                 {!isSuccess && (
+                    <div className="p-6 bg-slate-950/50 flex justify-end">
+                        <button onClick={closeModal} className="px-8 py-3 bg-slate-800 text-white text-[10px] font-black rounded-xl uppercase tracking-widest border border-white/5">{t.close}</button>
+                    </div>
+                 )}
               </div>
           </div>
       )}
