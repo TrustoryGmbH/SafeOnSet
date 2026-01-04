@@ -82,7 +82,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
              {isAdminMode ? <Shield size={32} /> : <Lock size={32} />}
           </div>
           <h1 className="text-3xl font-black mb-1 tracking-tight text-white">{isAdminMode ? 'Admin Portal' : 'Trustory'}</h1>
-          <p className="text-slate-400 text-[9px] font-bold uppercase tracking-[0.2em]">{isAdminMode ? 'OTP REQUIRED' : t.appSub}</p>
+          {!isAdminMode && <p className="text-slate-400 text-[9px] font-bold uppercase tracking-[0.2em]">{t.appSub}</p>}
         </div>
         
         {step === 'email' ? (
@@ -94,9 +94,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
               <div className="relative group">
                 <input 
                     type="text" 
-                    value={isAdminMode ? ADMIN_EMAIL : email} 
+                    value={isAdminMode ? '••••••••••••••••' : email} 
                     onChange={(e) => !isAdminMode && setEmail(e.target.value)} 
-                    placeholder={isAdminMode ? ADMIN_EMAIL : "Email address"} 
+                    placeholder={isAdminMode ? 'Protected Access' : "Email address"} 
                     className={`w-full py-4 pl-11 pr-4 ${isAdminMode ? 'bg-slate-950/30 text-slate-500 cursor-not-allowed' : 'bg-slate-950/50 text-white'} border border-white/10 rounded-2xl outline-none transition-all text-sm`} 
                     disabled={isAdminMode}
                     autoFocus={!isAdminMode}
@@ -105,21 +105,23 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
               </div>
             </div>
             {error && <p className="text-rose-400 text-xs ml-1">{error}</p>}
-            <button type="submit" disabled={isLoading} className={`w-full h-14 ${isAdminMode ? 'bg-purple-600' : 'bg-blue-600'} hover:opacity-90 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wide`}>
-              {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t.sendCode}
+            <button type="submit" disabled={isLoading} className={`w-full h-14 ${isAdminMode ? 'bg-purple-600 hover:bg-purple-500' : 'bg-blue-600 hover:bg-blue-500'} text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wide`}>
+              {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isAdminMode ? 'Secured Log-In' : t.sendCode)}
             </button>
             <div className="pt-2 flex flex-col items-center gap-4">
-                <button type="button" onClick={() => setShowRegister(true)} className="text-slate-500 hover:text-slate-300 transition-colors text-xs font-medium flex items-center gap-2 py-2 px-4 rounded-full hover:bg-white/5">
-                    <ClipboardList size={14} /> {t.registerProd}
-                </button>
-                <button type="button" onClick={() => window.location.href = '/'} className="text-slate-600 hover:text-slate-400 transition-colors text-[10px] uppercase font-black tracking-widest">Back to landing</button>
+                {!isAdminMode && (
+                  <button type="button" onClick={() => setShowRegister(true)} className="text-slate-500 hover:text-slate-300 transition-colors text-xs font-medium flex items-center gap-2 py-2 px-4 rounded-full hover:bg-white/5">
+                      <ClipboardList size={14} /> {t.registerProd}
+                  </button>
+                )}
+                <button type="button" onClick={() => window.location.href = '/'} className="text-slate-600 hover:text-slate-400 transition-colors text-[10px] uppercase font-black tracking-widest">Back to Home</button>
             </div>
           </form>
         ) : (
           <form onSubmit={handleVerify} className="space-y-6 animate-in slide-in-from-right-8 duration-300">
              <div className="text-center mb-6 bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20">
                 <p className="text-emerald-200 text-sm font-medium">{t.otpSent}</p>
-                <p className="text-xs text-emerald-200/60 mt-1 font-mono">{isAdminMode ? ADMIN_EMAIL : email}</p>
+                <p className="text-xs text-emerald-200/60 mt-1 font-mono">{isAdminMode ? 'Admin Account' : email}</p>
              </div>
             <div>
                 <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="••••••" className="w-full py-4 text-center bg-slate-950/50 border border-white/10 rounded-2xl text-white text-2xl font-mono tracking-[0.5em] outline-none" maxLength={6} autoFocus />
