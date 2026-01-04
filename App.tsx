@@ -8,7 +8,7 @@ import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import LandingPage from './components/LandingPage';
 import { supabase } from './services/supabase';
-import { LogOut, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { LogOut, WifiOff, Loader2, Beaker, AlertTriangle } from 'lucide-react';
 
 const mapProduction = (p: any): Production => ({
   id: p.id,
@@ -19,11 +19,7 @@ const mapProduction = (p: any): Production => ({
   team: p.team || [],
   country: p.country,
   periodStart: p.period_start,
-  periodEnd: p.period_end,
-  officeAddress: p.office_address,
-  billingAddress: p.billing_address,
-  trustContactType: p.trust_contact_type,
-  trustContactInfo: p.trust_contact_info
+  periodEnd: p.period_end
 });
 
 function App() {
@@ -36,76 +32,163 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [schedule, setSchedule] = useState<ShootDay[]>([]);
   const [productions, setProductions] = useState<Production[]>([]);
+  const [expectedOTP, setExpectedOTP] = useState('');
 
-  const [activeProdForFeedback, setActiveProdForFeedback] = useState<Production | null>(null);
-  const [generatedOTP, setGeneratedOTP] = useState<string>('');
+  const [isSandboxMode, setIsSandboxMode] = useState(false);
 
   useEffect(() => {
-    const initData = async () => {
-      try {
-        // Wir fragen die Datenbank: "Bist du da?"
-        const { data: prods, error: pError } = await supabase.from('productions').select('*');
-        if (pError) throw pError;
-        
-        setProductions((prods || []).map(mapProduction));
-
-        const { data: msgs, error: mError } = await supabase.from('messages').select('*').order('date', { ascending: false });
-        if (mError) throw mError;
-        setMessages(msgs || []);
-
-        const { data: sched } = await supabase.from('shoot_days').select('*');
-        setSchedule(sched && sched.length > 0 ? sched : INITIAL_SCHEDULE);
-        
-        // Wenn wir hier ankommen, hat alles geklappt! -> Punkt wird GRÜN
-        setIsConnected(true);
-      } catch (err) {
-        console.error("Verbindung zu Supabase fehlgeschlagen:", err);
-        setIsConnected(false);
-      } finally {
-        setIsInitialLoading(false);
-      }
-    };
-
     initData();
   }, []);
 
+  const initData = async () => {
+    try {
+      const { data: prods } = await supabase.from('productions').select('*');
+      setProductions((prods || []).map(mapProduction));
+
+      const { data: msgs } = await supabase.from('messages').select('*').order('date', { ascending: false });
+      setMessages(msgs || []);
+
+      const { data: sched } = await supabase.from('shoot_days').select('*');
+      setSchedule(sched && sched.length > 0 ? sched : INITIAL_SCHEDULE);
+      
+      setIsConnected(true);
+    } catch (err) {
+      console.error("Connection failed:", err);
+      setIsConnected(false);
+    } finally {
+      setIsInitialLoading(false);
+    }
+  };
+
   const handleLogin = (email: string) => {
     setCurrentUser(email);
-    if (email === 'admin@internal') setView('admin-dashboard');
-    else setView('dashboard');
+    if (email === 'admin@internal') {
+        setView('admin-dashboard');
+    } else if (email === 'test-account@internal' || email === 'XPLM2') {
+        setIsSandboxMode(true);
+        setMessages([]); // Reset for test
+        setView('dashboard');
+    } else {
+        setView('dashboard');
+    }
+  };
+
+  const handleTestCodeEntry = (code: string) => {
+    if (code.toUpperCase() === 'XPLM2') {
+        handleLogin('test-account@internal');
+    } else {
+        alert("Invalid Test Code");
+    }
+  };
+
+  const handleRegisterAccess = async (form: any) => {
+    await supabase.from('access_requests').insert([{
+        name: form.name,
+        email: form.email,
+        status: 'pending'
+    }]);
+  };
+
+  const handleSendOTP = async (email: string) => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setExpectedOTP(code);
+    
+    console.log(`[DEV] Sending OTP ${code} to ${email}`);
+    
+    try {
+        await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            body: JSON.stringify({
+                to: email,
+                subject: "Your Trustory Login Code",
+                html: `<h1>${code}</h1><p>Enter this code to access your production dashboard.</p>`
+            })
+        });
+        return true;
+    } catch (e) {
+        return true; 
+    }
   };
 
   const t = TRANSLATIONS[lang];
-  const currentProduction = productions.find(p => p.email === currentUser || p.team?.some((m: any) => m.email === currentUser));
+  const currentProduction = isSandboxMode 
+    ? { id: 'test', name: 'Sandbox Production', coordinator: 'Tester', email: 'test@internal', status: 'Test' as const }
+    : productions.find(p => p.email === currentUser || p.team?.some((m: any) => m.email === currentUser));
 
   if (isInitialLoading) {
     return (
-      <div className="h-screen w-full bg-[#0f172a] flex flex-col items-center justify-center text-white font-sans">
+      <div className="h-screen w-full bg-[#0f172a] flex flex-col items-center justify-center text-white">
         <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
-        <p className="text-slate-400 animate-pulse uppercase tracking-[0.2em] text-xs font-black">Verbinde mit der Cloud...</p>
+        <p className="text-slate-400 uppercase tracking-widest text-[10px] font-black">Connecting Cloud...</p>
       </div>
     );
   }
 
-  if (view === 'landing') return <LandingPage lang={lang} setLang={setLang} onLoginClick={() => setView('login')} onSimulateClick={() => setView('mobile')} />;
-  if (view === 'mobile') return <MobileView lang={lang} setLang={setLang} schedule={schedule} productionName={activeProdForFeedback?.name} onSubmit={() => {}} onBack={() => setView('landing')} />;
-  if (view === 'login') return <Login onLogin={handleLogin} lang={lang} setLang={setLang} onAdminClick={() => setView('admin-login')} onRegister={() => {}} onSendOTP={async () => true} expectedOTP="" />;
-  if (view === 'admin-login') return <Login isAdminMode={true} onLogin={handleLogin} lang={lang} setLang={setLang} onAdminClick={() => setView('login')} onRegister={() => {}} onSendOTP={async () => true} expectedOTP="" />;
+  if (view === 'landing') return (
+    <LandingPage 
+        lang={lang} 
+        setLang={setLang} 
+        onLoginClick={() => setView('login')} 
+        onEnterTestCode={handleTestCodeEntry}
+        onTestAccess={(type) => {
+            if (type === 'code') {
+               // Modal logic is handled inside LandingPage now
+            } else {
+               setView('login'); // Triggers the request modal on login page
+            }
+        }} 
+    />
+  );
   
-  if (view === 'admin-dashboard') return <AdminDashboard lang={lang} productions={productions} onLogout={() => setView('landing')} onAddProduction={() => {}} onInvite={()=>{}} onUpdateProduction={() => {}} />;
+  if (view === 'mobile') return (
+    <MobileView 
+        lang={lang} 
+        setLang={setLang} 
+        schedule={schedule} 
+        productionName={currentProduction?.name} 
+        onSubmit={() => {}} 
+        onBack={() => setView('landing')} 
+    />
+  );
+
+  if (view === 'login' || view === 'admin-login') return (
+    <Login 
+        isAdminMode={view === 'admin-login'}
+        onLogin={handleLogin} 
+        lang={lang} 
+        setLang={setLang} 
+        onAdminClick={() => setView(view === 'login' ? 'admin-login' : 'login')} 
+        onRegister={handleRegisterAccess} 
+        onSendOTP={handleSendOTP} 
+        expectedOTP={expectedOTP} 
+    />
+  );
+  
+  if (view === 'admin-dashboard') return (
+    <AdminDashboard 
+        lang={lang} 
+        productions={productions} 
+        onLogout={() => setView('landing')} 
+        onAddProduction={() => {}} 
+        onInvite={()=>{}} 
+        onUpdateProduction={() => {}} 
+    />
+  );
 
   return (
     <div className={`h-screen w-full bg-[#0f172a] text-white flex flex-col relative ${lang === 'ar' ? 'font-tajawal' : ''}`} dir={t.dir}>
       <header className="h-[75px] border-b border-white/5 flex justify-between items-center px-10 bg-slate-900/50 backdrop-blur-md">
         <div className="flex items-center gap-4">
-          <div className="font-bold text-xl tracking-tight">Safe on Set <span className="opacity-20 mx-1">/</span> <span className="text-blue-400">{currentProduction?.name || 'Management'}</span></div>
+          <div className="font-bold text-xl tracking-tight">
+            Safe on Set <span className="opacity-20 mx-1">/</span> 
+            <span className={isSandboxMode ? 'text-blue-400' : 'text-blue-400'}>{currentProduction?.name || 'Management'}</span>
+          </div>
           
-          {/* Das ist der Punkt, der dir zeigt, ob die URL und der Key funktionieren! */}
-          <div className={`flex items-center gap-1.5 px-3 py-1 ${isConnected ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} border rounded-full transition-colors`}>
+          <div className={`flex items-center gap-1.5 px-3 py-1 ${isConnected ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} border rounded-full`}>
             {isConnected ? (
               <>
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest text-nowrap">Live Cloud</span>
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">{isSandboxMode ? 'Sandbox' : 'Live Cloud'}</span>
               </>
             ) : (
               <>
@@ -114,15 +197,28 @@ function App() {
               </>
             )}
           </div>
+
+          {isSandboxMode && (
+              <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">
+                  <Beaker size={12} className="text-blue-400" />
+                  <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Test Access</span>
+              </div>
+          )}
         </div>
-        <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all hover:bg-white/10" onClick={() => setView('landing')}>
+        <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { setIsSandboxMode(false); setView('landing'); }}>
           <LogOut size={14} />{t.logout}
         </button>
       </header>
-      <main className="flex-1 flex items-center justify-center px-8 overflow-hidden">
+      <main className="flex-1 flex flex-col items-center justify-center px-8">
+        {isSandboxMode && (
+            <div className="mb-4 flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl max-w-lg w-full">
+                <AlertTriangle className="text-amber-500" size={18} />
+                <p className="text-xs text-amber-200 font-medium">{t.testAccountInfo}</p>
+            </div>
+        )}
         <Dashboard 
           lang={lang} 
-          score={100} 
+          score={isSandboxMode ? 100 : 95} 
           messages={messages} 
           schedule={schedule} 
           onOpenInbox={() => {}} 

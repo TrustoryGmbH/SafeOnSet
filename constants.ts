@@ -1,5 +1,38 @@
 
-import { Translation, Language, Production } from './types';
+import { Translation, Language, ShootDay } from './types';
+
+const COMMON_DEPT = {
+  production: "Production",
+  direction: "Direction",
+  camera: "Camera",
+  lighting: "Lighting / Grip",
+  sound: "Sound",
+  art: "Art Dept / Props",
+  costume: "Costume",
+  makeup: "Hair & Makeup",
+  catering: "Catering",
+  cast: "Cast / Stunts",
+  other: "Other"
+};
+
+const COMMON_DEPT_DE = {
+  production: "Produktion",
+  direction: "Regie",
+  camera: "Kamera",
+  lighting: "Licht / Bühne",
+  sound: "Ton",
+  art: "Szenenbild / Requisite",
+  costume: "Kostüm",
+  makeup: "Maske",
+  catering: "Catering",
+  cast: "Darsteller / Stunts",
+  other: "Sonstiges"
+};
+
+// Fix: Add the missing INITIAL_SCHEDULE export
+export const INITIAL_SCHEDULE: ShootDay[] = [
+  { day: 1, date: new Date().toISOString().split('T')[0] }
+];
 
 export const TRANSLATIONS: Record<Language, Translation> = {
   en: {
@@ -27,9 +60,9 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     explTitle100: "Status: Excellent",
     explText100: "Everything is in order, crew feels well.",
     explTitle90: "Status: Attention Required",
-    explText90: "Negative feedback received recently. Action required - please review written feedback.",
+    explText90: "Negative feedback received recently.",
     explTitle80: "Status: Urgent Action",
-    explText80: "Immediate action required - multiple negative feedbacks received.",
+    explText80: "Immediate action required.",
     imprBtn: "Legal Notice",
     imprTitle: "Legal Notice",
     imprText: "Trustory GmbH...",
@@ -44,19 +77,7 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     disclaimerText: "Did you feel comfortable on set today?",
     selectDept: "Select Department (Optional)",
     deptLabel: "Department",
-    depts: {
-      production: "Production",
-      direction: "Direction",
-      camera: "Camera",
-      lighting: "Lighting / Grip",
-      sound: "Sound",
-      art: "Art Dept / Props",
-      costume: "Costume",
-      makeup: "Hair & Makeup",
-      catering: "Catering",
-      cast: "Cast / Stunts",
-      other: "Other"
-    },
+    depts: COMMON_DEPT,
     adminLogin: "Admin Login",
     otpSent: "Code sent to email!",
     otpPlaceholder: "Enter 6-digit Code",
@@ -135,7 +156,7 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     how2: "Print QR",
     how3: "Crew Votes",
     trustBadge1: "Version 2.0 • New from 2026",
-    trustBadge2: "Now live in UK, UAE, Germany, and across the EU. Trusted by major streamers.",
+    trustBadge2: "Now live in UK, UAE, Germany, and across the EU.",
     trustSecTitle: "Never Alone.",
     trustSecSub: "Professional support integrated.",
     trustSecFeat1: "Themis Connection.",
@@ -145,7 +166,14 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     trustCardName: "Themis Advice Center",
     trustCardBtn: "Contact Support",
     deptInsights: "Department Insights",
-    markResolved: "Resolve Feedback"
+    markResolved: "Resolve Feedback",
+    testAccess: "Test Access",
+    enterTestCode: "Enter Code",
+    requestTestAccess: "Request Access",
+    pendingRequests: "Access Requests",
+    approve: "Approve",
+    reject: "Reject",
+    testAccountInfo: "This is a test account. Data will not be saved."
   },
   de: {
     appSub: "Safe on Set",
@@ -189,19 +217,7 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     disclaimerText: "Hast du dich heute am Set wohlgefühlt?",
     selectDept: "Abteilung wählen (Optional)",
     deptLabel: "Abteilung",
-    depts: {
-      production: "Produktion",
-      direction: "Regie",
-      camera: "Kamera",
-      lighting: "Licht / Bühne",
-      sound: "Ton",
-      art: "Szenenbild / Requisite",
-      costume: "Kostüm",
-      makeup: "Maske",
-      catering: "Catering",
-      cast: "Darsteller / Stunts",
-      other: "Sonstiges"
-    },
+    depts: COMMON_DEPT_DE,
     adminLogin: "Admin Login",
     otpSent: "Code an Email gesendet!",
     otpPlaceholder: "6-stelligen Code eingeben",
@@ -264,7 +280,7 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     tabSchedule: "Drehplan",
     tabDetails: "Details",
     landHero: "Sichere Sets. Bessere Filme.",
-    landSub: "Der moderne Standard für Stimmungs-Tracking und Crew-Wohlbefinden in der Filmproduktion.",
+    landSub: "Der moderne Standard für Stimmungs-Tracking und Crew-Wohlbefinden.",
     landCTA: "Jetzt Starten",
     feat1Title: "Anonymes Feedback",
     feat1Desc: "Crew stärken.",
@@ -280,7 +296,7 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     how2: "QR drucken",
     how3: "Crew votet",
     trustBadge1: "Version 2.0 • Neu ab 2026",
-    trustBadge2: "Jetzt live in UK, VAE, Deutschland und in der gesamten EU. Von großen Streamern geschätzt.",
+    trustBadge2: "Jetzt live in UK, VAE, Deutschland und in der gesamten EU.",
     trustSecTitle: "Nie Allein.",
     trustSecSub: "Support integriert.",
     trustSecFeat1: "Themis-Anbindung.",
@@ -290,7 +306,14 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     trustCardName: "Themis Beratung",
     trustCardBtn: "Kontakt aufnehmen",
     deptInsights: "Abteilungs-Einblick",
-    markResolved: "Feedback klären"
+    markResolved: "Feedback klären",
+    testAccess: "Test-Zugang",
+    enterTestCode: "Code eingeben",
+    requestTestAccess: "Zugang anfragen",
+    pendingRequests: "Zugangsanfragen",
+    approve: "Genehmigen",
+    reject: "Ablehnen",
+    testAccountInfo: "Test-Account. Daten werden nicht gespeichert."
   },
   ar: {
     appSub: "Safe on Set",
@@ -334,19 +357,7 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     disclaimerText: "هل شعرت بالراحة في موقع التصوير اليوم؟",
     selectDept: "اختر القسم (اختياري)",
     deptLabel: "القسم",
-    depts: {
-      production: "الإنتاج",
-      direction: "الإخراج",
-      camera: "الكاميرا",
-      lighting: "الإضاءة / المقابض",
-      sound: "الصوت",
-      art: "قسم الفن / الإكسسوارات",
-      costume: "الملابس",
-      makeup: "الشعر والمكياج",
-      catering: "التغذية",
-      cast: "الممثلون / البدلاء",
-      other: "آخر"
-    },
+    depts: COMMON_DEPT,
     adminLogin: "تسجيل دخول المشرف",
     otpSent: "تم إرسال الرمز!",
     otpPlaceholder: "أدخل الرمز",
@@ -409,7 +420,7 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     tabSchedule: "الجدول",
     tabDetails: "التفاصيل",
     landHero: "مواقع تصوير آمنة.",
-    landSub: "المعيار الحديث لتتبع الحالة المزاجية ورفاهية الطاقم في إنتاج الأفلام.",
+    landSub: "المعيار الحديث لتتبع الحالة المزاجية ورفاهية الطاقم.",
     landCTA: "ابدأ إنتاجك",
     feat1Title: "تعليقات مجهولة",
     feat1Desc: "تمكين طاقمك.",
@@ -425,7 +436,7 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     how2: "اطبع QR",
     how3: "صوت",
     trustBadge1: "الإصدار 2.0 • جديد 2026",
-    trustBadge2: "مباشر الآن في المملكة المتحدة والإمارات وألمانيا وعبر الاتحاد الأوروبي. محل ثقة كبار المنتجين.",
+    trustBadge2: "مباشر الآن في المملكة المتحدة والإمارات وألمانيا وعبر الاتحاد الأوروبي.",
     trustSecTitle: "لست وحدك أبدًا.",
     trustSecSub: "الدعم متكامل.",
     trustSecFeat1: "اتصال Themis.",
@@ -435,17 +446,13 @@ export const TRANSLATIONS: Record<Language, Translation> = {
     trustCardName: "مركز Themis",
     trustCardBtn: "اتصل بالدعم",
     deptInsights: "رؤى الأقسام",
-    markResolved: "حل التعليق"
+    markResolved: "حل التعليق",
+    testAccess: "Test Access",
+    enterTestCode: "Enter Code",
+    requestTestAccess: "Request Access",
+    pendingRequests: "Access Requests",
+    approve: "Approve",
+    reject: "Reject",
+    testAccountInfo: "Test Account. No data saved."
   }
 };
-
-export const INITIAL_SCHEDULE: any[] = [
-  { day: 24, date: new Date().toISOString().split('T')[0] },
-  { day: 23, date: new Date(Date.now() - 86400000).toISOString().split('T')[0] },
-  { day: 22, date: new Date(Date.now() - 172800000).toISOString().split('T')[0] }
-];
-
-export const INITIAL_PRODUCTIONS: Production[] = [
-  { id: '1', name: 'Safe on Set Pilot', coordinator: 'Max Mustermann', email: 'admin@safe-on-set.com', status: 'Active', team: [] },
-  { id: '2', name: 'TATORT Berlin', coordinator: 'Lisa Müller', email: 'lisa@prod.com', status: 'Pending', team: [] },
-];

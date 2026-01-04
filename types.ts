@@ -1,4 +1,5 @@
 
+
 export type Language = 'en' | 'de' | 'ar';
 
 export interface Message {
@@ -8,18 +9,32 @@ export interface Message {
   contact: string;
   score: number;
   department?: string;
-  resolved?: boolean; // Neu: Status für Management
+  resolved?: boolean;
 }
 
 export interface ShootDay {
   day: number;
-  date: string; // ISO string YYYY-MM-DD
+  date: string;
 }
 
-export interface User {
+export interface AccessRequest {
+  id: string;
   name: string;
   email: string;
-  role: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
+export interface Production {
+  id: string;
+  name: string;
+  coordinator: string;
+  email: string;
+  status: 'Active' | 'Pending' | 'Invited' | 'Finished' | 'Test';
+  team?: TeamMember[];
+  country?: string;
+  periodStart?: string;
+  periodEnd?: string;
 }
 
 export interface TeamMember {
@@ -28,23 +43,8 @@ export interface TeamMember {
   role: string;
 }
 
-export interface Production {
-  id: string;
-  name: string;
-  coordinator: string;
-  email: string;
-  status: 'Active' | 'Pending' | 'Invited' | 'Finished';
-  team?: TeamMember[];
-  country?: string;
-  periodStart?: string;
-  periodEnd?: string;
-  officeAddress?: string;
-  billingAddress?: string;
-  trustContactType?: 'themis' | 'internal' | 'none';
-  trustContactInfo?: string;
-}
-
 export interface Translation {
+  // ... (bestehende Felder bleiben erhalten)
   appSub: string;
   role: string;
   hMood: string;
@@ -86,19 +86,8 @@ export interface Translation {
   disclaimerText: string;
   selectDept: string;
   deptLabel: string;
-  depts: {
-    production: string;
-    direction: string;
-    camera: string;
-    lighting: string;
-    sound: string;
-    art: string;
-    costume: string;
-    makeup: string;
-    catering: string;
-    cast: string;
-    other: string;
-  };
+  // Fix: use Record<string, string> instead of any to avoid 'unknown' type issues in components
+  depts: Record<string, string>;
   adminLogin: string;
   otpSent: string;
   otpPlaceholder: string;
@@ -186,6 +175,14 @@ export interface Translation {
   trustCardTitle: string;
   trustCardName: string;
   trustCardBtn: string;
-  deptInsights: string; // Neu
-  markResolved: string; // Neu
+  deptInsights: string;
+  markResolved: string;
+  // Neue Felder
+  testAccess: string;
+  enterTestCode: string;
+  requestTestAccess: string;
+  pendingRequests: string;
+  approve: string;
+  reject: string;
+  testAccountInfo: string;
 }
