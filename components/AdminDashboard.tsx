@@ -21,7 +21,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'productions' | 'requests'>('productions');
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
   
-  // States für Production-Management
+  // States for Production Management
   const [newProdName, setNewProdName] = useState('');
   const [newCoordName, setNewCoordName] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -37,8 +37,39 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleApproveRequest = async (req: AccessRequest) => {
-    await supabase.from('access_requests').update({ status: 'approved' }).eq('id', req.id);
-    alert(`Request for ${req.email} approved. User can now use XPLM2.`);
+    const { error } = await supabase.from('access_requests').update({ status: 'approved' }).eq('id', req.id);
+    if (error) {
+        alert("Error approving request.");
+        return;
+    }
+
+    // Trigger confirmation email
+    try {
+        await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            body: JSON.stringify({
+                to: req.email,
+                subject: "Ihr Trustory Test-Zugang wurde freigeschaltet",
+                html: `
+                    <div style="font-family: sans-serif; color: #0f172a; padding: 40px; border: 1px solid #e2e8f0; border-radius: 20px;">
+                        <h1 style="color: #2563eb;">Willkommen bei Trustory</h1>
+                        <p>Hallo ${req.first_name || req.name},</p>
+                        <p>Ihre Anfrage für den kostenfreien Test-Zugang wurde erfolgreich geprüft und freigeschaltet.</p>
+                        <div style="background: #f1f5f9; padding: 20px; border-radius: 12px; margin: 30px 0; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em;">Ihr Zugangscode</p>
+                            <h2 style="margin: 10px 0 0 0; font-size: 32px; font-weight: 900; letter-spacing: 0.3em; color: #0f172a;">XPLM2</h2>
+                        </div>
+                        <p>Gehen Sie auf <a href="https://safe-on-set.com">safe-on-set.com</a> und klicken Sie auf "Test-Zugang" -> "Code Eingeben".</p>
+                        <p style="font-size: 12px; color: #94a3b8; margin-top: 40px;">Dies ist ein isolierter Sandbox-Account. Alle Daten werden nach der Sitzung zurückgesetzt.</p>
+                    </div>
+                `
+            })
+        });
+        alert(`Request for ${req.email} approved and email sent.`);
+    } catch (e) {
+        alert(`Approved, but failed to send email: ${e}`);
+    }
+    
     fetchRequests();
   };
 
@@ -133,7 +164,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <tbody className="divide-y divide-white/5">
                       {accessRequests.map(req => (
                           <tr key={req.id} className="hover:bg-white/5">
-                              <td className="p-4 font-bold">{req.name}</td>
+                              <td className="p-4 font-bold">{req.first_name || ''} {req.last_name || req.name}</td>
                               <td className="p-4 text-slate-400">{req.email}</td>
                               <td className="p-4 text-slate-500 text-xs">{new Date(req.created_at).toLocaleDateString()}</td>
                               <td className="p-4">

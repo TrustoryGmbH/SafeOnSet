@@ -25,9 +25,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
 
   const [showRegister, setShowRegister] = useState(false);
   const [regSuccess, setRegSuccess] = useState(false);
-  const [regForm, setRegForm] = useState({
-    name: '', email: ''
-  });
+  const [regForm, setRegForm] = useState({ name: '', email: '' });
 
   const ADMIN_EMAIL = 'trustorygmbh@gmail.com';
 
@@ -37,7 +35,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
     
     const targetEmail = isAdminMode ? ADMIN_EMAIL : email;
     
-    // Test code directly in login also works as a backup
     if (!isAdminMode && email.toUpperCase() === 'XPLM2') {
         onLogin('XPLM2');
         return;
@@ -105,7 +102,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
               </div>
             </div>
             {error && <p className="text-rose-400 text-xs ml-1">{error}</p>}
-            <button type="submit" disabled={isLoading} className={`w-full h-14 ${isAdminMode ? 'bg-purple-600 hover:bg-purple-500' : 'bg-blue-600 hover:bg-blue-500'} text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wide`}>
+            <button type="submit" disabled={isLoading} className={`w-full h-14 ${isAdminMode ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/40' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/40'} text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wide`}>
               {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isAdminMode ? 'Secured Log-In' : t.sendCode)}
             </button>
             <div className="pt-2 flex flex-col items-center gap-4">

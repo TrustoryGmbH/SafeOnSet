@@ -1,5 +1,4 @@
 
-
 export type Language = 'en' | 'de' | 'ar';
 
 export interface Message {
@@ -19,7 +18,9 @@ export interface ShootDay {
 
 export interface AccessRequest {
   id: string;
-  name: string;
+  first_name?: string;
+  last_name?: string;
+  name: string; // Combined for legacy or display
   email: string;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
@@ -44,7 +45,6 @@ export interface TeamMember {
 }
 
 export interface Translation {
-  // ... (bestehende Felder bleiben erhalten)
   appSub: string;
   role: string;
   hMood: string;
@@ -86,7 +86,6 @@ export interface Translation {
   disclaimerText: string;
   selectDept: string;
   deptLabel: string;
-  // Fix: use Record<string, string> instead of any to avoid 'unknown' type issues in components
   depts: Record<string, string>;
   adminLogin: string;
   otpSent: string;
@@ -177,7 +176,6 @@ export interface Translation {
   trustCardBtn: string;
   deptInsights: string;
   markResolved: string;
-  // Neue Felder
   testAccess: string;
   enterTestCode: string;
   requestTestAccess: string;
