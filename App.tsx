@@ -36,19 +36,41 @@ function App() {
   const [expectedOTP, setExpectedOTP] = useState('');
 
   const [isSandboxMode, setIsSandboxMode] = useState(false);
+  const [activeProductionId, setActiveProductionId] = useState<string | null>(null);
 
   useEffect(() => {
     initData();
   }, []);
 
+  // Automatischer Scroll nach oben bei View-Wechsel
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
+
   const initData = async () => {
     try {
+      // 1. Alle Produktionen laden
       const { data: prods } = await supabase.from('productions').select('*');
-      setProductions((prods || []).map(mapProduction));
+      const mappedProds = (prods || []).map(mapProduction);
+      setProductions(mappedProds);
 
+      // 2. Prüfen ob ein QR-Code Scan (URL Parameter) vorliegt
+      const params = new URLSearchParams(window.location.search);
+      const prodId = params.get('prod');
+
+      if (prodId) {
+        setActiveProductionId(prodId);
+        if (prodId === 'test') {
+            setIsSandboxMode(true);
+        }
+        setView('mobile');
+      }
+
+      // 3. Messages laden
       const { data: msgs } = await supabase.from('messages').select('*').order('date', { ascending: false });
       setMessages(msgs || []);
 
+      // 4. Schedule laden
       const { data: sched } = await supabase.from('shoot_days').select('*');
       setSchedule(sched && sched.length > 0 ? sched : INITIAL_SCHEDULE);
       
@@ -67,7 +89,7 @@ function App() {
         setView('admin-dashboard');
     } else if (email === 'test-account@internal' || email === 'XPLM2') {
         setIsSandboxMode(true);
-        setMessages([]); // Reset for test
+        setMessages([]); // Reset for local test view
         setView('dashboard');
     } else {
         setView('dashboard');
@@ -78,7 +100,7 @@ function App() {
     if (code.toUpperCase() === 'XPLM2') {
         handleLogin('test-account@internal');
     } else {
-        alert("Invalid Test Code");
+        alert("Ungültiger Code");
     }
   };
 
@@ -112,16 +134,62 @@ function App() {
     }
   };
 
+  const handleFeedbackSubmit = async (score: number, details?: { text: string; contact: string; department?: string }) => {
+    // Sandbox Modus simuliert nur lokal
+    if (isSandboxMode) {
+      const sandboxMsg = {
+        id: Math.random().toString(),
+        date: new Date().toISOString(),
+        score: score,
+        text: details?.text || '',
+        contact: details?.contact || 'Anonymous',
+        department: details?.department || 'General',
+        resolved: false
+      };
+      setMessages(prev => [sandboxMsg, ...prev]);
+      return;
+    }
+
+    // Bestimme die zugehörige Produktion für den Eintrag
+    const prodToLink = activeProductionId || currentProduction?.id;
+    if (!prodToLink) {
+        console.error("No production context found for feedback");
+        return;
+    }
+
+    try {
+      const newMessage = {
+        date: new Date().toISOString(),
+        score: score,
+        text: details?.text || '',
+        contact: details?.contact || 'Anonymous',
+        department: details?.department || 'General',
+        production_id: prodToLink,
+        resolved: false
+      };
+
+      const { error } = await supabase.from('messages').insert([newMessage]);
+      if (error) throw error;
+      
+      // Lokal aktualisieren für sofortige Rückmeldung im Dashboard (falls offen)
+      setMessages(prev => [{ ...newMessage, id: Math.random().toString() }, ...prev]);
+    } catch (err) {
+      console.error("Failed to submit feedback:", err);
+    }
+  };
+
   const t = TRANSLATIONS[lang];
+  
+  // Bestimme die aktuell im Kontext stehende Produktion basierend auf Login oder URL-Parameter
   const currentProduction = isSandboxMode 
-    ? { id: 'test', name: 'Sandbox Production', coordinator: 'Tester', email: 'test@internal', status: 'Test' as const }
-    : productions.find(p => p.email === currentUser || p.team?.some((m: any) => m.email === currentUser));
+    ? { id: 'test', name: 'Sandbox Project', coordinator: 'Tester', email: 'test@internal', status: 'Test' as const }
+    : productions.find(p => p.id === activeProductionId || p.email === currentUser || p.team?.some((m: any) => m.email === currentUser));
 
   if (isInitialLoading) {
     return (
       <div className="h-screen w-full bg-[#0f172a] flex flex-col items-center justify-center text-white">
         <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
-        <p className="text-slate-400 uppercase tracking-widest text-[10px] font-black">Connecting Cloud...</p>
+        <p className="text-slate-400 uppercase tracking-widest text-[10px] font-black">Lade Cloud-Daten...</p>
       </div>
     );
   }
@@ -150,8 +218,15 @@ function App() {
         setLang={setLang} 
         schedule={schedule} 
         productionName={currentProduction?.name} 
-        onSubmit={() => {}} 
-        onBack={() => setView('landing')} 
+        onSubmit={handleFeedbackSubmit} 
+        onBack={() => {
+            // URL säubern beim Zurückgehen von einer QR-Scan Ansicht
+            const url = new URL(window.location.href);
+            url.searchParams.delete('prod');
+            window.history.replaceState({}, '', url);
+            setActiveProductionId(null);
+            setView('landing');
+        }} 
     />
   );
 
@@ -193,7 +268,7 @@ function App() {
             <span className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? 'text-emerald-500' : 'text-rose-500'}`}>{isConnected ? (isSandboxMode ? 'Sandbox' : 'Live Cloud') : 'Offline'}</span>
           </div>
         </div>
-        <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { setIsSandboxMode(false); setView('landing'); }}>
+        <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { setIsSandboxMode(false); setCurrentUser(''); setView('landing'); }}>
           <LogOut size={14} />{t.logout}
         </button>
       </header>
@@ -206,14 +281,14 @@ function App() {
         )}
         <Dashboard 
           lang={lang} 
-          score={isSandboxMode ? 100 : 95} 
-          messages={messages} 
+          score={isSandboxMode ? (messages.length > 0 ? Math.round(messages.reduce((acc, m) => acc + (100 - m.score), 0) / messages.length) : 100) : (messages.filter(m => m.production_id === currentProduction?.id).length > 0 ? Math.round(messages.filter(m => m.production_id === currentProduction?.id).reduce((acc, m) => acc + (100 - m.score), 0) / messages.filter(m => m.production_id === currentProduction?.id).length) : 100)} 
+          messages={messages.filter(m => isSandboxMode ? true : m.production_id === currentProduction?.id)} 
           schedule={schedule} 
           onOpenInbox={() => {}} 
           onOpenHistory={() => {}} 
           onOpenEmail={() => {}} 
-          productionName={currentProduction?.name || 'Production'} 
-          productionId={currentProduction?.id || '1'} 
+          productionName={currentProduction?.name || 'Produktion'} 
+          productionId={currentProduction?.id || 'test'} 
         />
       </main>
     </div>

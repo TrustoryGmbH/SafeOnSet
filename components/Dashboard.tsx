@@ -57,13 +57,15 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const explanation = getExplanation();
+  
   const handlePdfSelect = (l: Language) => {
     generatePosterPDF(canvasRef.current, productionName, l);
     setActivePopup('none');
   };
 
-  // Robuste URL Generierung für den QR Code
+  // Dynamische URL Generierung für den QR Code
   const getQrUrl = () => {
+    // Verwendet die aktuelle Domain der App
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('prod', productionId);
     return url.toString();
@@ -104,7 +106,8 @@ const Dashboard: React.FC<DashboardProps> = ({
           
           <div className="space-y-4 mb-12">
             {schedule.slice(0, 3).map((day, idx) => {
-              const dayScore = idx === 0 ? score : 100 - (idx * 5);
+              // Simulierter Trendverlauf für die Historie
+              const dayScore = idx === 0 ? score : Math.min(100, score + (idx * 2));
               return (
                 <div key={idx} className="flex items-center gap-4">
                   <span className="text-xs font-bold text-slate-400 w-16">{idx === 0 ? t.today : `${t.day} ${day.day}`}</span>
@@ -123,7 +126,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.deptInsights}</span>
              </div>
              <div className="grid grid-cols-4 gap-3">
-                {/* Fixed: Explicitly casting Object.entries to ensure 'label' is a string for indexing deptCounts */}
                 {(Object.entries(t.depts) as [string, string][]).slice(0, 8).map(([key, label]) => {
                   const count = deptCounts[label] || 0;
                   return (
@@ -155,7 +157,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="bg-white p-4 rounded-2xl shadow-2xl transition-transform hover:scale-105" ref={qrRef}>
-            <QRCodeCanvas value={getQrUrl()} size={140} level="H" />
+            <QRCodeCanvas value={getQrUrl()} size={140} level="H" includeMargin={false} />
             <div className="mt-2 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Scan Me</div>
           </div>
         </div>
