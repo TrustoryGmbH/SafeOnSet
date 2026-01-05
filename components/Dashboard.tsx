@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { TRANSLATIONS } from '../constants';
-import { Language, Message, ShootDay } from '../types';
+import { Language, Message, ShootDay, Production } from '../types';
 import Smiley from './Smiley';
 import { generatePosterPDF } from '../services/pdfGenerator';
 import { Mail, FileText, Inbox, BarChart2, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
@@ -17,11 +17,13 @@ interface DashboardProps {
   productionName: string;
   productionId: string;
   isSandboxMode?: boolean;
+  productionStartDate?: string; // Optional: Wann die Produktion aktiviert wurde
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   lang, messages, schedule, 
-  onOpenInbox, onOpenHistory, onOpenEmail, productionName, productionId, isSandboxMode = false
+  onOpenInbox, onOpenHistory, onOpenEmail, productionName, productionId, isSandboxMode = false,
+  productionStartDate
 }) => {
   const t = TRANSLATIONS[lang];
   const qrRef = useRef<HTMLDivElement>(null);
@@ -35,19 +37,19 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   }, []);
 
-  // Farb-Logik: 0 Negativ = Grün, 1-4 Negativ = Gelb, 5+ Negativ = Rot
+  // Farb-Logik: 100% = Grün, 90-60% = Gelb, <=50% = Rot
   const getColor = (s: number) => {
     if (s >= 100) return '#22c55e'; // Grün
-    if (s >= 60) return '#eab308';  // Gelb (90%, 80%, 70%, 60%)
-    return '#ef4444';               // Rot (<= 50%)
+    if (s >= 60) return '#eab308';  // Gelb (1-4 negative Feedbacks)
+    return '#ef4444';               // Rot (5+ negative Feedbacks)
   };
 
-  // Hilfsfunktion zur Score-Berechnung für einen bestimmten Tag (10% Abzug pro Negativ-Feedback)
+  // Hilfsfunktion zur Score-Berechnung: Start 100%, -10% pro negatives Feedback (>0 score)
   const calculateScoreForDate = (dateString: string) => {
-    // Im Sandbox-Modus generieren wir für historische Tage (nicht heute) Zufallswerte
     const todayStr = new Date().toISOString().split('T')[0];
+    
+    // Sandbox-Modus: Simuliere Historie für Demo-Zwecke
     if (isSandboxMode && dateString !== todayStr) {
-        // Beispielwerte für die Demo
         const hash = dateString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const pseudoNegatives = hash % 6; // 0 bis 5
         return Math.max(0, 100 - (pseudoNegatives * 10));
@@ -80,20 +82,28 @@ const Dashboard: React.FC<DashboardProps> = ({
     return url.toString();
   };
 
-  // Generiere die Liste der letzten 10 Tage für den Trend
+  // Generiere die Liste der Trend-Tage (max 10)
   const getTrendDays = () => {
     const days = [];
-    const count = isSandboxMode ? 10 : 5; // Im Real-Modus zeigen wir erst mal weniger an
-    for (let i = 0; i < count; i++) {
+    const maxDays = 10;
+    
+    // In echten Accounts: Wir zählen rückwärts, aber stoppen am Startdatum
+    const startLimit = productionStartDate ? new Date(productionStartDate) : new Date();
+    if (!productionStartDate && !isSandboxMode) {
+        // Falls kein Startdatum da ist, nehmen wir das Datum der ersten Nachricht
+        if (messages.length > 0) {
+            const sortedMsgs = [...messages].sort((a,b) => a.date.localeCompare(b.date));
+            startLimit.setTime(new Date(sortedMsgs[0].date).getTime());
+        }
+    }
+
+    for (let i = 0; i < maxDays; i++) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const ds = d.toISOString().split('T')[0];
         
-        // Im Real-Modus: Nur Tage ab Aktivierung (hier vereinfacht: nur wenn Messages da sind oder heute)
-        if (!isSandboxMode && i > 0) {
-            const hasData = messages.some(m => m.date.split('T')[0] === ds);
-            if (!hasData) continue; 
-        }
+        // Stopp-Logik für Real-Account
+        if (!isSandboxMode && d < startLimit && i > 0) break;
 
         days.push({
             label: i === 0 ? t.today : `${d.getDate()}.${(d.getMonth() + 1).toString().padStart(2, '0')}.`,
@@ -121,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="text-6xl font-black mt-8 text-white tracking-tighter">{currentScore}%</div>
         </div>
 
-        <div className="w-full mt-12 bg-black/20 border border-white/5 rounded-2xl p-4">
+        <div className="w-full mt-12 bg-black/20 border border-white/5 rounded-2xl p-4 min-h-[100px]">
            <div className={`flex items-center gap-2 mb-1 ${explanation.color}`}>
              <explanation.icon size={14} strokeWidth={3} />
              <span className="text-[10px] font-black uppercase tracking-wider">{explanation.title}</span>
@@ -130,15 +140,15 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Middle: Trend History */}
+      {/* Middle: Trend History (Keine Abteilungen mehr hier!) */}
       <div className="flex flex-col border-r border-white/5">
-        <div className="p-8">
+        <div className="p-8 flex-1">
           <div className="flex items-center gap-2 mb-10">
             <TrendingUp size={14} className="text-slate-500" />
             <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.hTrend}</span>
           </div>
           
-          <div className="space-y-6 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+          <div className="space-y-6 overflow-y-auto max-h-[420px] pr-2 custom-scrollbar">
             {trendDays.map((day, idx) => (
               <div key={idx} className="flex items-center gap-4 group">
                 <span className={`text-xs font-bold w-16 transition-colors ${idx === 0 ? 'text-white' : 'text-slate-500 group-hover:text-slate-400'}`}>{day.label}</span>
@@ -154,7 +164,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="mt-auto p-6 border-t border-white/5 grid grid-cols-2 gap-4 bg-black/10">
+        <div className="p-6 border-t border-white/5 grid grid-cols-2 gap-4 bg-black/10">
            <button onClick={onOpenInbox} className="h-14 bg-slate-800/50 hover:bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center gap-3 text-sm font-bold transition-all group">
              <Inbox size={18} className="text-slate-400 group-hover:text-rose-400" />
              {t.inbox}

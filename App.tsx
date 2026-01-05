@@ -38,23 +38,47 @@ function App() {
   const [isSandboxMode, setIsSandboxMode] = useState(false);
   const [activeProductionId, setActiveProductionId] = useState<string | null>(null);
 
+  // 10-Sekunden Polling für Echtzeit-Updates
+  useEffect(() => {
+    let interval: any;
+
+    if (view === 'dashboard' || view === 'admin-dashboard') {
+        interval = setInterval(() => {
+            refreshData();
+        }, 10000); // 10 Sekunden
+    }
+
+    return () => {
+        if (interval) clearInterval(interval);
+    };
+  }, [view]);
+
   useEffect(() => {
     initData();
   }, []);
 
-  // Automatischer Scroll nach oben bei View-Wechsel
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [view]);
 
+  const refreshData = async () => {
+    try {
+      // Nur Nachrichten nachladen für Performance
+      const { data: msgs } = await supabase.from('messages').select('*').order('date', { ascending: false });
+      if (msgs) setMessages(msgs);
+      setIsConnected(true);
+    } catch (err) {
+      console.error("Refresh failed:", err);
+      setIsConnected(false);
+    }
+  };
+
   const initData = async () => {
     try {
-      // 1. Alle Produktionen laden
       const { data: prods } = await supabase.from('productions').select('*');
       const mappedProds = (prods || []).map(mapProduction);
       setProductions(mappedProds);
 
-      // 2. Prüfen ob ein QR-Code Scan (URL Parameter) vorliegt
       const params = new URLSearchParams(window.location.search);
       const prodId = params.get('prod');
 
@@ -66,11 +90,9 @@ function App() {
         setView('mobile');
       }
 
-      // 3. Messages laden
       const { data: msgs } = await supabase.from('messages').select('*').order('date', { ascending: false });
       setMessages(msgs || []);
 
-      // 4. Schedule laden
       const { data: sched } = await supabase.from('shoot_days').select('*');
       setSchedule(sched && sched.length > 0 ? sched : INITIAL_SCHEDULE);
       
@@ -89,7 +111,7 @@ function App() {
         setView('admin-dashboard');
     } else if (email === 'test-account@internal' || email === 'XPLM2') {
         setIsSandboxMode(true);
-        setMessages([]); // Reset for local test view
+        setMessages([]); 
         setView('dashboard');
     } else {
         setView('dashboard');
@@ -135,7 +157,6 @@ function App() {
   };
 
   const handleFeedbackSubmit = async (score: number, details?: { text: string; contact: string; department?: string }) => {
-    // Sandbox Modus simuliert nur lokal
     if (isSandboxMode) {
       const sandboxMsg = {
         id: Math.random().toString(),
@@ -150,12 +171,8 @@ function App() {
       return;
     }
 
-    // Bestimme die zugehörige Produktion für den Eintrag
     const prodToLink = activeProductionId || currentProduction?.id;
-    if (!prodToLink) {
-        console.error("No production context found for feedback");
-        return;
-    }
+    if (!prodToLink) return;
 
     try {
       const newMessage = {
@@ -171,7 +188,6 @@ function App() {
       const { error } = await supabase.from('messages').insert([newMessage]);
       if (error) throw error;
       
-      // Lokal aktualisieren für sofortige Rückmeldung im Dashboard (falls offen)
       setMessages(prev => [{ ...newMessage, id: Math.random().toString() }, ...prev]);
     } catch (err) {
       console.error("Failed to submit feedback:", err);
@@ -180,9 +196,8 @@ function App() {
 
   const t = TRANSLATIONS[lang];
   
-  // Bestimme die aktuell im Kontext stehende Produktion basierend auf Login oder URL-Parameter
   const currentProduction = isSandboxMode 
-    ? { id: 'test', name: 'Sandbox Project', coordinator: 'Tester', email: 'test@internal', status: 'Test' as const }
+    ? { id: 'test', name: 'Sandbox Project', coordinator: 'Tester', email: 'test@internal', status: 'Test' as const, created_at: new Date().toISOString() }
     : productions.find(p => p.id === activeProductionId || p.email === currentUser || p.team?.some((m: any) => m.email === currentUser));
 
   if (isInitialLoading) {
@@ -202,13 +217,7 @@ function App() {
         onAdminLoginClick={() => setView('admin-login')}
         onRegisterClick={() => { setLoginViewMode('register'); setView('login'); }}
         onEnterTestCode={handleTestCodeEntry}
-        onTestAccess={(type) => {
-            if (type === 'code') {
-               // Modal-Logik wird in LandingPage gehandhabt
-            } else {
-               setView('login');
-            }
-        }} 
+        onTestAccess={(type) => {}} 
     />
   );
   
@@ -220,7 +229,6 @@ function App() {
         productionName={currentProduction?.name} 
         onSubmit={handleFeedbackSubmit} 
         onBack={() => {
-            // URL säubern beim Zurückgehen von einer QR-Scan Ansicht
             const url = new URL(window.location.href);
             url.searchParams.delete('prod');
             window.history.replaceState({}, '', url);
@@ -289,6 +297,7 @@ function App() {
           onOpenEmail={() => {}} 
           productionName={currentProduction?.name || 'Produktion'} 
           productionId={currentProduction?.id || 'test'} 
+          productionStartDate={(currentProduction as any)?.created_at}
         />
       </main>
     </div>
