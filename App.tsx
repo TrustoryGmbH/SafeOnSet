@@ -281,7 +281,7 @@ function App() {
         )}
         <Dashboard 
           lang={lang} 
-          score={isSandboxMode ? (messages.length > 0 ? Math.round(messages.reduce((acc, m) => acc + (100 - m.score), 0) / messages.length) : 100) : (messages.filter(m => m.production_id === currentProduction?.id).length > 0 ? Math.round(messages.filter(m => m.production_id === currentProduction?.id).reduce((acc, m) => acc + (100 - m.score), 0) / messages.filter(m => m.production_id === currentProduction?.id).length) : 100)} 
+          isSandboxMode={isSandboxMode}
           messages={messages.filter(m => isSandboxMode ? true : m.production_id === currentProduction?.id)} 
           schedule={schedule} 
           onOpenInbox={() => {}} 
