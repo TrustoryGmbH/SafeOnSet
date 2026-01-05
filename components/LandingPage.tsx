@@ -2,18 +2,20 @@
 import React, { useState } from 'react';
 import { TRANSLATIONS } from '../constants';
 import { Language } from '../types';
-import { ArrowRight, Shield, BarChart3, Lock, LogIn, Phone, CheckCircle, Globe, X, Beaker, ClipboardCheck, Play, Users, Zap, Mail, User } from 'lucide-react';
+import { ArrowRight, Shield, BarChart3, Lock, LogIn, Phone, CheckCircle, Globe, X, Beaker, ClipboardCheck, Play, Users, Zap, Mail, User, ShieldAlert, ClipboardList } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 interface LandingPageProps {
   lang: Language;
   setLang: (l: Language) => void;
   onLoginClick: () => void;
+  onAdminLoginClick: () => void;
+  onRegisterClick: () => void; // Neue Prop für direkten Registrierungs-Pfad
   onTestAccess: (type: 'code' | 'request') => void;
   onEnterTestCode: (code: string) => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, onTestAccess, onEnterTestCode }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, onAdminLoginClick, onRegisterClick, onTestAccess, onEnterTestCode }) => {
   const t = TRANSLATIONS[lang];
   const [activeModal, setActiveModal] = useState<'none' | 'privacy' | 'terms' | 'imprint' | 'test-options' | 'request-form'>('none');
   const [testCode, setTestCode] = useState('');
@@ -27,7 +29,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
   const features = [
     { id: 1, icon: Shield, title: t.feat1Title, desc: t.feat1Desc, more: t.feat1More, color: "text-purple-400", bg: "bg-purple-500/20" },
     { id: 2, icon: BarChart3, title: t.feat2Title, desc: t.feat2Desc, more: t.feat2More, color: "text-blue-400", bg: "bg-blue-500/20" },
-    { id: 3, icon: Lock, title: t.feat3Title, desc: t.feat3Desc, more: t.feat3More, color: "text-emerald-400", bg: "bg-emerald-500/20" }
+    { id: 3, icon: Lock, title: t.feat3Title, desc: t.feat3More, more: t.feat3More, color: "text-emerald-400", bg: "bg-emerald-500/20" }
   ];
 
   const handleRequestSubmit = async (e: React.FormEvent) => {
@@ -46,9 +48,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
         setIsSuccess(true);
     } catch (err: any) {
         console.error("Supabase Insertion Error:", err);
-        // User friendly hint for missing table
         if (err.message?.includes('not find the table')) {
-            alert("Hinweis: Die Datenbank-Tabelle für Anfragen wurde noch nicht erstellt. Bitte informiere den Admin (siehe Admin-Bereich Setup-Anleitung).");
+            alert("Hinweis: Die Datenbank-Tabelle für Anfragen wurde noch nicht erstellt. Bitte informiere den Admin.");
         } else {
             alert(`Fehler beim Senden: ${err.message}`);
         }
@@ -116,8 +117,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
          </p>
 
          <div className="flex flex-col sm:flex-row items-center gap-4 mb-20">
-             <button onClick={onLoginClick} className="h-16 px-10 bg-blue-600 hover:bg-blue-500 text-white text-xl font-black rounded-2xl shadow-[0_10px_40px_rgba(37,99,235,0.4)] transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3 group">
-                {t.landCTA} <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+             {/* Geändert von landCTA (Start Now) auf registerProd (Produktion Registrieren) */}
+             <button onClick={onRegisterClick} className="h-16 px-10 bg-blue-600 hover:bg-blue-500 text-white text-xl font-black rounded-2xl shadow-[0_10px_40px_rgba(37,99,235,0.4)] transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3 group">
+                <ClipboardList size={24} className="group-hover:rotate-12 transition-transform" />
+                {t.registerProd}
              </button>
              <button onClick={() => setActiveModal('test-options')} className="h-16 px-10 bg-slate-800/40 hover:bg-slate-800 text-slate-200 text-sm font-bold rounded-2xl border border-white/10 hover:border-white/20 transition-all flex items-center gap-2 backdrop-blur-md group">
                 <Beaker size={18} className="text-blue-400 group-hover:text-blue-300 transition-colors" />
@@ -135,7 +138,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
          </div>
       </main>
 
-      {/* Content sections remain unchanged */}
       <section className="relative z-10 py-32 bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-3 gap-12">
           {features.map((f) => (
@@ -151,17 +153,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
         </div>
       </section>
 
-      {/* Other sections... */}
-
       <footer className="py-20 px-8 border-t border-white/5 text-center text-slate-500 text-sm relative z-10 bg-slate-950">
           <div className="flex flex-col items-center mb-12">
             <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center font-black text-white mb-4 border border-white/5">T</div>
             <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">Trustory GmbH</p>
           </div>
-          <div className="flex justify-center items-center gap-8 mb-10 font-bold uppercase tracking-widest text-[10px]">
+          <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 mb-10 font-bold uppercase tracking-widest text-[10px]">
                <button onClick={() => setActiveModal('privacy')} className="hover:text-white transition-colors">Privacy Policy</button>
                <button onClick={() => setActiveModal('terms')} className="hover:text-white transition-colors">Terms of Service</button>
                <button onClick={() => setActiveModal('imprint')} className="hover:text-white transition-colors">{t.imprTitle}</button>
+               {/* Admin Login hier platziert */}
+               <button onClick={onAdminLoginClick} className="flex items-center gap-1.5 text-slate-500 hover:text-purple-400 transition-colors">
+                  <ShieldAlert size={12} />
+                  {t.adminLogin}
+               </button>
           </div>
           <p className="font-medium opacity-50">© 2025 Trustory GmbH. All rights reserved.</p>
       </footer>
@@ -250,8 +255,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
                     )}
                  </div>
                  
-                 {/* Only show global footer button if not in success view to avoid duplicates */}
-                 {(!isSuccess && activeModal === 'request-form') && (
+                 {(!isSuccess && (activeModal === 'request-form' || activeModal === 'test-options')) && (
                     <div className="p-6 bg-slate-950/50 flex justify-end">
                         <button onClick={closeModal} className="px-8 py-3 bg-slate-800 text-white text-[10px] font-black rounded-xl uppercase tracking-widest border border-white/5">{t.close}</button>
                     </div>

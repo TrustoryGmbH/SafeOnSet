@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TRANSLATIONS } from '../constants';
 import { Language } from '../types';
-import { Mail, ArrowRight, CheckCircle, Lock, ClipboardList, X, Shield, User, Building, Calendar, Phone, MapPin } from 'lucide-react';
+import { Mail, ArrowRight, CheckCircle, Lock, ClipboardList, X, Shield, User, Building, Calendar, Phone, MapPin, ArrowLeft } from 'lucide-react';
 
 /**
  * HILFSKOMPONENTEN (Außerhalb der Hauptkomponente definiert für stabiles Rendering)
@@ -125,9 +125,10 @@ interface LoginProps {
   onSendOTP: (email: string) => Promise<boolean>;
   expectedOTP: string;
   isAdminMode?: boolean;
+  initialShowRegister?: boolean;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onRegister, onSendOTP, expectedOTP, isAdminMode = false }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onRegister, onSendOTP, expectedOTP, isAdminMode = false, initialShowRegister = false }) => {
   const t = TRANSLATIONS[lang];
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
@@ -135,10 +136,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const [showRegister, setShowRegister] = useState(false);
+  const [showRegister, setShowRegister] = useState(initialShowRegister);
   const [regSuccess, setRegSuccess] = useState(false);
+
+  useEffect(() => {
+    if (initialShowRegister) setShowRegister(true);
+  }, [initialShowRegister]);
   
-  // Detailliertes Formular State
   const [regForm, setRegForm] = useState({
     productionName: '',
     managerName: '',
@@ -173,7 +177,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
     const payload = {
         request_type: 'production',
         name: regForm.productionName,
-        email: regForm.managerEmail, // Primary contact
+        email: regForm.managerEmail,
         manager_name: regForm.managerName,
         manager_email: regForm.managerEmail,
         coordinator_name: regForm.coordinatorName,
@@ -222,13 +226,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
             <button type="submit" disabled={isLoading} className={`w-full h-14 ${isAdminMode ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/40' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/40'} text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wide`}>
               {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isAdminMode ? 'Secured Log-In' : t.sendCode)}
             </button>
-            <div className="pt-2 flex flex-col items-center gap-4">
-                {!isAdminMode && (
-                  <button type="button" onClick={() => setShowRegister(true)} className="text-slate-500 hover:text-slate-300 transition-colors text-xs font-medium flex items-center gap-2 py-2 px-4 rounded-full hover:bg-white/5">
-                      <ClipboardList size={14} /> {t.registerProd}
-                  </button>
-                )}
-                <button type="button" onClick={() => window.location.href = '/'} className="text-slate-600 hover:text-slate-400 transition-colors text-[10px] uppercase font-black tracking-widest">Back to Home</button>
+            
+            <div className="pt-2 flex flex-col items-center gap-3">
+                {/* Registrierungs-Button hier entfernt */}
+                
+                <button type="button" onClick={() => window.location.href = '/'} className="text-slate-600 hover:text-slate-400 transition-colors text-[10px] uppercase font-black tracking-widest mt-2 flex items-center gap-1">
+                    <ArrowLeft size={10} /> Back to Home
+                </button>
             </div>
           </form>
         ) : (
@@ -236,11 +240,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
             <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="••••••" className="w-full py-4 text-center bg-slate-950/50 border border-white/10 rounded-2xl text-white text-2xl font-mono tracking-[0.5em] outline-none" maxLength={6} autoFocus />
             {error && <p className="text-rose-400 text-xs text-center">{error}</p>}
             <button type="submit" className={`w-full h-14 ${isAdminMode ? 'bg-purple-600' : 'bg-blue-600'} text-white font-bold rounded-2xl shadow-lg transition-all text-sm uppercase tracking-wide`}>{t.verifyCode}</button>
+            
+            <button 
+                type="button" 
+                onClick={() => setStep('email')} 
+                className="w-full text-center text-slate-500 hover:text-white text-[10px] uppercase font-black tracking-widest py-2"
+            >
+                {t.backToEmail}
+            </button>
           </form>
         )}
       </div>
 
-      {/* RIESIGES REGISTRIERUNGS MODAL */}
       {showRegister && (
           <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
               <div className="bg-[#0f172a] border border-white/10 rounded-[40px] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative custom-scrollbar">

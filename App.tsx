@@ -25,6 +25,7 @@ const mapProduction = (p: any): Production => ({
 function App() {
   const [lang, setLang] = useState<Language>('de');
   const [view, setView] = useState<'landing' | 'login' | 'admin-login' | 'dashboard' | 'admin-dashboard' | 'mobile'>('landing');
+  const [loginViewMode, setLoginViewMode] = useState<'login' | 'register'>('login');
   const [currentUser, setCurrentUser] = useState<string>(''); 
   const [isConnected, setIsConnected] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -87,7 +88,6 @@ function App() {
         if (error) throw error;
     } catch (err: any) {
         console.error("Registration failed:", err);
-        // Fallback Alert wird in Komponenten gehandhabt
     }
   };
 
@@ -130,7 +130,9 @@ function App() {
     <LandingPage 
         lang={lang} 
         setLang={setLang} 
-        onLoginClick={() => setView('login')} 
+        onLoginClick={() => { setLoginViewMode('login'); setView('login'); }} 
+        onAdminLoginClick={() => setView('admin-login')}
+        onRegisterClick={() => { setLoginViewMode('register'); setView('login'); }}
         onEnterTestCode={handleTestCodeEntry}
         onTestAccess={(type) => {
             if (type === 'code') {
@@ -163,6 +165,7 @@ function App() {
         onRegister={handleRegisterAccess} 
         onSendOTP={handleSendOTP} 
         expectedOTP={expectedOTP} 
+        initialShowRegister={loginViewMode === 'register'}
     />
   );
   

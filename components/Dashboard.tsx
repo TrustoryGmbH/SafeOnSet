@@ -123,7 +123,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.deptInsights}</span>
              </div>
              <div className="grid grid-cols-4 gap-3">
-                {Object.entries(t.depts).slice(0, 8).map(([key, label]) => {
+                {/* Fixed: Explicitly casting Object.entries to ensure 'label' is a string for indexing deptCounts */}
+                {(Object.entries(t.depts) as [string, string][]).slice(0, 8).map(([key, label]) => {
                   const count = deptCounts[label] || 0;
                   return (
                     <div key={key} className={`p-3 rounded-xl border ${count > 0 ? 'bg-rose-500/5 border-rose-500/20' : 'bg-white/[0.02] border-white/5'}`}>
