@@ -78,7 +78,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
       <nav className="relative z-50 flex items-center justify-between px-8 py-6 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-2">
            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white shadow-lg shadow-blue-900/50">T</div>
-           <span className="font-bold text-xl tracking-tight">Trustory</span>
+           <span className="font-bold text-xl tracking-tight">Trustory <span className="text-blue-500 opacity-50 ml-1 font-black text-xs uppercase tracking-widest">Safe on Set 2026</span></span>
         </div>
         <div className="flex items-center gap-6">
             <div className="hidden md:flex gap-1 bg-white/5 p-1 rounded-full border border-white/5 backdrop-blur-sm">
@@ -168,7 +168,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
                   {t.adminLogin}
                </button>
           </div>
-          <p className="font-medium opacity-50">© 2025 Trustory GmbH. All rights reserved.</p>
+          <p className="font-medium opacity-50">© 2026 Trustory GmbH. All rights reserved.</p>
       </footer>
 
       {/* Modals */}

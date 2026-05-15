@@ -1,5 +1,6 @@
 {
-  "name": "Safe on Set",
-  "description": "A production mood tracking dashboard for film sets with real-time feedback and analytics.",
-  "requestFramePermissions": []
+  "name": "Trustory - Safe on Set (2026 Edition)",
+  "description": "Safe on Set: Real-time feedback and mood tracking for film productions. Updated for June 2026 with enhanced production lifecycle management and automated onboarding.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }

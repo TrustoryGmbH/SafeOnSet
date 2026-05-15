@@ -14,6 +14,18 @@ interface AdminDashboardProps {
   onUpdateProduction: (id: string, updates: Partial<Production>) => void;
 }
 
+const mapProduction = (p: any): Production => ({
+  id: p.id,
+  name: p.name,
+  coordinator: p.coordinator,
+  email: p.email,
+  status: p.status,
+  team: p.team || [],
+  country: p.country,
+  periodStart: p.period_start,
+  periodEnd: p.period_end
+});
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
   lang, onLogout, productions, onAddProduction, onInvite, onUpdateProduction 
 }) => {
@@ -27,6 +39,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newProdName, setNewProdName] = useState('');
   const [newCoordName, setNewCoordName] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedProd, setSelectedProd] = useState<Production | null>(null);
+
+  const handleCreate = () => {
+    if (!newProdName || !newEmail) return;
+    onAddProduction({
+        name: newProdName,
+        coordinator: newCoordName,
+        email: newEmail,
+    });
+    setNewProdName('');
+    setNewCoordName('');
+    setNewEmail('');
+    setShowAddModal(false);
+  };
 
   const SQL_SETUP = `-- UPDATE: Access Requests Tabelle mit allen Feldern
 ALTER TABLE access_requests 
@@ -92,16 +119,50 @@ CREATE TABLE IF NOT EXISTS access_requests (
         const { error } = await supabase.from('access_requests').update({ status: 'approved' }).eq('id', req.id);
         if (error) throw error;
 
-        // E-Mail Logik (vereinfacht)
+        let inviteUrl = '';
+        
+        // If it's a production request, auto-create a production object
+        if (req.request_type === 'production') {
+            const newProd = {
+                name: req.name || 'Neues Projekt',
+                coordinator: req.coordinator_name || req.manager_name || 'Coordinator',
+                email: req.manager_email || req.email,
+                status: 'Active',
+                created_at: new Date().toISOString()
+            };
+            const { data: pData, error: pError } = await supabase.from('productions').insert([newProd]).select();
+            if (pError) throw pError;
+            if (pData && pData[0]) {
+                const mapped = mapProduction(pData[0]);
+                onAddProduction(mapped); // Local state update through App.tsx prop
+                inviteUrl = `${window.location.origin}/?prod=${pData[0].id}`;
+            }
+        }
+
+        // Email logic
         await fetch('/.netlify/functions/send-email', {
             method: 'POST',
             body: JSON.stringify({
                 to: req.email,
-                subject: req.request_type === 'production' ? "Produktion freigeschaltet" : "Test-Zugang freigeschaltet",
-                html: `<div style="font-family: sans-serif; padding: 20px;"><h1>Freigabe erfolgreich</h1><p>Code: <b>XPLM2</b></p></div>`
+                subject: req.request_type === 'production' ? "Ihre Safe on Set Produktion ist bereit" : "Zugang freigeschaltet",
+                html: `<div style="font-family: sans-serif; padding: 40px; text-align: center; background: #f8fafc;">
+                        <h1 style="color: #2563eb;">${req.request_type === 'production' ? 'Produktion Bereit' : 'Zugang Erteilt'}</h1>
+                        <p style="color: #64748b; font-size: 16px;">Ihre Anfrage wurde erfolgreich genehmigt.</p>
+                        ${inviteUrl ? `
+                            <div style="margin: 30px 0;">
+                                <a href="${inviteUrl}" style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; box-shadow: 0 4px 12px rgba(37,99,235,0.3);">Dashboard öffnen</a>
+                            </div>
+                        ` : `
+                            <div style="background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; display: inline-block; margin: 20px 0;">
+                                <span style="display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; font-weight: bold; margin-bottom: 8px;">Ihr persönlicher Code</span>
+                                <span style="font-size: 32px; font-weight: 900; color: #1e293b; letter-spacing: 0.2em;">XPLM2</span>
+                            </div>
+                        `}
+                        <p style="font-size: 11px; color: #94a3b8; margin-top: 40px;">Safe on Set © 2026 • Trustory GmbH</p>
+                       </div>`
             })
         });
-        alert(`Anfrage genehmigt.`);
+        alert(`Anfrage genehmigt.${req.request_type === 'production' ? ' Produktion wurde angelegt.' : ''}`);
         fetchRequests();
         setSelectedReq(null);
     } catch (e: any) {
@@ -137,9 +198,16 @@ CREATE TABLE IF NOT EXISTS access_requests (
               </button>
            </nav>
         </div>
-        <button onClick={onLogout} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-bold bg-white/5 px-4 py-2 rounded-xl border border-white/5 transition-all">
-            <LogOut size={16} /> {t.logout}
-        </button>
+        <div className="flex items-center gap-4">
+            {activeTab === 'productions' && (
+                <button onClick={() => setShowAddModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-2 text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all shadow-lg shadow-blue-900/40">
+                    <Plus size={16} /> New Production
+                </button>
+            )}
+            <button onClick={onLogout} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-bold bg-white/5 px-4 py-2 rounded-xl border border-white/5 transition-all">
+                <LogOut size={16} /> {t.logout}
+            </button>
+        </div>
       </header>
 
       <main className="p-8 max-w-6xl mx-auto">
@@ -157,7 +225,14 @@ CREATE TABLE IF NOT EXISTS access_requests (
                               <td className="p-4">
                                   <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${prod.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>{prod.status}</span>
                               </td>
-                              <td className="p-4 text-right"><button className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-slate-400"><Settings size={14} /></button></td>
+                              <td className="p-4 text-right flex justify-end gap-2 text-slate-400">
+                                  {prod.status === 'Active' && (
+                                    <button onClick={() => onInvite(prod.id)} title="Versende Einladung" className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
+                                        <Send size={14} />
+                                    </button>
+                                  )}
+                                  <button onClick={() => setSelectedProd(prod)} className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-all"><Settings size={14} /></button>
+                              </td>
                           </tr>
                       ))}
                   </tbody>
@@ -205,6 +280,89 @@ CREATE TABLE IF NOT EXISTS access_requests (
            </div>
         )}
       </main>
+
+      {/* Modal: New Production */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+             <div className="bg-slate-900 border border-white/10 rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95">
+                <div className="p-8 border-b border-white/5 flex justify-between items-center bg-slate-950/50">
+                   <div>
+                       <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-500 mb-1 block">Quick Setup</span>
+                       <h2 className="text-2xl font-black uppercase tracking-tight">New Production</h2>
+                   </div>
+                   <button onClick={() => setShowAddModal(false)} className="text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+                </div>
+                <div className="p-8 space-y-6">
+                    <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">Production Name</label>
+                        <input 
+                            value={newProdName} 
+                            onChange={e => setNewProdName(e.target.value)}
+                            placeholder="e.g. Cinema Feature June"
+                            className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">Coordinator Email</label>
+                        <input 
+                            value={newEmail} 
+                            onChange={e => setNewEmail(e.target.value)}
+                            placeholder="coordinator@production.com"
+                            className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">Manager Name (Optional)</label>
+                        <input 
+                            value={newCoordName} 
+                            onChange={e => setNewCoordName(e.target.value)}
+                            placeholder="John Doe"
+                            className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
+                </div>
+                <div className="p-8 bg-slate-950/50 flex gap-4">
+                    <button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-slate-800 text-white text-xs font-black rounded-2xl uppercase tracking-widest">Cancel</button>
+                    <button onClick={handleCreate} className="flex-1 py-4 bg-blue-600 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-blue-900/40">Create & Deploy</button>
+                </div>
+             </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Production */}
+      {selectedProd && (
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-white/10 rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95">
+                <div className="p-8 border-b border-white/5 flex justify-between items-center bg-slate-950/50">
+                   <div>
+                       <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500 mb-1 block">Settings</span>
+                       <h2 className="text-2xl font-black uppercase tracking-tight">{selectedProd.name}</h2>
+                   </div>
+                   <button onClick={() => setSelectedProd(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+                </div>
+                <div className="p-8 space-y-4 text-slate-300 text-sm">
+                    <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                        <span className="font-bold">Dashboard Link</span>
+                        <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/?prod=${selectedProd.id}`); alert("URL kopiert!"); }} className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors">
+                            <Copy size={16} /> URL
+                        </button>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                        <span className="font-bold">Status</span>
+                        <span className="text-emerald-500 text-xs font-black uppercase">{selectedProd.status}</span>
+                    </div>
+                    <div className="pt-4">
+                       <button onClick={() => { if(confirm("Archivieren?")) onUpdateProduction(selectedProd.id, {status: 'Finished'}); setSelectedProd(null); }} className="w-full py-4 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest rounded-2xl">
+                           Produktion Archivieren
+                       </button>
+                    </div>
+                </div>
+                <div className="p-8 bg-slate-950/50">
+                    <button onClick={() => setSelectedProd(null)} className="w-full py-4 bg-slate-800 text-white text-xs font-black rounded-2xl uppercase tracking-widest">Fertig</button>
+                </div>
+             </div>
+          </div>
+      )}
 
       {/* Detail Modal für Admins */}
       {selectedReq && (
