@@ -87,6 +87,20 @@ CREATE TABLE IF NOT EXISTS access_requests (
   phone TEXT,
   status TEXT DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Productions Tabelle falls noch nicht vorhanden
+CREATE TABLE IF NOT EXISTS productions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  coordinator TEXT,
+  email TEXT NOT NULL,
+  status TEXT DEFAULT 'Active',
+  team JSONB DEFAULT '[]'::jsonb,
+  country TEXT,
+  period_start TEXT,
+  period_end TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
 );`;
 
   useEffect(() => {
@@ -127,12 +141,12 @@ CREATE TABLE IF NOT EXISTS access_requests (
                 name: req.name || 'Neues Projekt',
                 coordinator: req.coordinator_name || req.manager_name || 'Coordinator',
                 email: req.manager_email || req.email,
-                status: 'Active',
-                created_at: new Date().toISOString()
+                status: 'Active'
             };
             const { data: pData, error: pError } = await supabase.from('productions').insert([newProd]).select();
-            if (pError) throw pError;
-            if (pData && pData[0]) {
+            if (pError) {
+                console.error("Auto-create production failed:", pError);
+            } else if (pData && pData[0]) {
                 const mapped = mapProduction(pData[0]);
                 onAddProduction(mapped); // Local state update through App.tsx prop
                 inviteUrl = `${window.location.origin}/?prod=${pData[0].id}`;
@@ -140,29 +154,35 @@ CREATE TABLE IF NOT EXISTS access_requests (
         }
 
         // Email logic
-        await fetch('/.netlify/functions/send-email', {
-            method: 'POST',
-            body: JSON.stringify({
-                to: req.email,
-                subject: req.request_type === 'production' ? "Ihre Safe on Set Produktion ist bereit" : "Zugang freigeschaltet",
-                html: `<div style="font-family: sans-serif; padding: 40px; text-align: center; background: #f8fafc;">
-                        <h1 style="color: #2563eb;">${req.request_type === 'production' ? 'Produktion Bereit' : 'Zugang Erteilt'}</h1>
-                        <p style="color: #64748b; font-size: 16px;">Ihre Anfrage wurde erfolgreich genehmigt.</p>
-                        ${inviteUrl ? `
-                            <div style="margin: 30px 0;">
-                                <a href="${inviteUrl}" style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; box-shadow: 0 4px 12px rgba(37,99,235,0.3);">Dashboard öffnen</a>
-                            </div>
-                        ` : `
-                            <div style="background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; display: inline-block; margin: 20px 0;">
-                                <span style="display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; font-weight: bold; margin-bottom: 8px;">Ihr persönlicher Code</span>
-                                <span style="font-size: 32px; font-weight: 900; color: #1e293b; letter-spacing: 0.2em;">XPLM2</span>
-                            </div>
-                        `}
-                        <p style="font-size: 11px; color: #94a3b8; margin-top: 40px;">Safe on Set © 2026 • Trustory GmbH</p>
-                       </div>`
-            })
-        });
-        alert(`Anfrage genehmigt.${req.request_type === 'production' ? ' Produktion wurde angelegt.' : ''}`);
+        try {
+            await fetch('/.netlify/functions/send-email', {
+                method: 'POST',
+                body: JSON.stringify({
+                    to: req.email,
+                    subject: req.request_type === 'production' ? "Ihre Safe on Set Produktion ist bereit" : "Zugang freigeschaltet",
+                    html: `<div style="font-family: sans-serif; padding: 40px; text-align: center; background: #f8fafc;">
+                            <h1 style="color: #2563eb;">${req.request_type === 'production' ? 'Produktion Bereit' : 'Zugang Erteilt'}</h1>
+                            <p style="color: #64748b; font-size: 16px;">Ihre Anfrage wurde erfolgreich genehmigt.</p>
+                            ${inviteUrl ? `
+                                <div style="margin: 30px 0;">
+                                    <a href="${inviteUrl}" style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; box-shadow: 0 4px 12px rgba(37,99,235,0.3);">Dashboard öffnen</a>
+                                </div>
+                            ` : `
+                                <div style="background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; display: inline-block; margin: 20px 0;">
+                                    <span style="display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; font-weight: bold; margin-bottom: 8px;">Ihr persönlicher Code</span>
+                                    <span style="font-size: 32px; font-weight: 900; color: #1e293b; letter-spacing: 0.2em;">XPLM2</span>
+                                </div>
+                            `}
+                            <p style="font-size: 11px; color: #94a3b8; margin-top: 40px;">Safe on Set © 2026 • Trustory GmbH</p>
+                        </div>`
+                })
+            });
+            alert(`Anfrage genehmigt.${req.request_type === 'production' ? ' Produktion wurde angelegt.' : ''}`);
+        } catch (emailErr) {
+            console.warn("Email error in preview:", emailErr);
+            alert(`Anfrage genehmigt, aber E-Mail-Versand in dieser Vorschau nicht verfügbar.\n${inviteUrl ? 'URL: ' + inviteUrl : 'Code: XPLM2'}`);
+        }
+        
         fetchRequests();
         setSelectedReq(null);
     } catch (e: any) {

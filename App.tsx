@@ -197,23 +197,34 @@ function App() {
   const handleCreateProduction = async (payload: Omit<Production, 'id' | 'status'>) => {
     try {
       const newProd = {
-        ...payload,
-        status: 'Active',
-        team: [],
-        created_at: new Date().toISOString()
+        name: payload.name,
+        coordinator: payload.coordinator,
+        email: payload.email,
+        status: 'Active'
       };
       
       const { data, error } = await supabase.from('productions').insert([newProd]).select();
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Error:", error);
+        throw new Error(error.message || "Datenbank-Fehler");
+      }
       
       if (data && data[0]) {
         const mapped = mapProduction(data[0]);
         setProductions(prev => [...prev, mapped]);
         alert("Produktion erfolgreich angelegt!");
+      } else {
+        // Fallback falls select() nichts zurückgibt aber kein Fehler kam
+        refreshData();
+        alert("Produktion angelegt (Bitte Liste aktualisieren)");
       }
     } catch (err: any) {
       console.error("Failed to create production:", err);
-      alert("Fehler beim Anlegen: " + err.message);
+      // Detailliertere Fehlermeldung
+      const errorMsg = err.message === 'Failed to fetch' 
+        ? "Verbindung zur Datenbank fehlgeschlagen (Netzwerk-Fehler oder CORS). Bitte prüfen Sie die Supabase-Einstellungen."
+        : err.message;
+      alert("Fehler beim Anlegen: " + errorMsg);
     }
   };
 
@@ -245,22 +256,30 @@ function App() {
       
       const inviteUrl = `${window.location.origin}/?prod=${id}`;
       
-      await fetch('/.netlify/functions/send-email', {
-        method: 'POST',
-        body: JSON.stringify({
-          to: prod.email,
-          subject: `Willkommen bei Trustory: ${prod.name}`,
-          html: `<div style="font-family: sans-serif; padding: 40px; text-align: center; background: #f8fafc;">
-                  <h1 style="color: #1e293b;">Produktion Bereit</h1>
-                  <p style="color: #64748b;">Ihr Feedback-System für <b>${prod.name}</b> wurde aktiviert.</p>
-                  <a href="${inviteUrl}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">Zum Dashboard</a>
-                  <p style="font-size: 12px; color: #94a3b8;">Sicher am Set mit Trustory Safe on Set.</p>
-                 </div>`
-        })
-      });
-      alert("Einladung versendet!");
+      // Netlify Functions sind in der AIS-Preview nicht direkt verfügbar
+      // Wir versuchen es trotzdem, fangen aber den Fehler ab
+      try {
+        await fetch('/.netlify/functions/send-email', {
+          method: 'POST',
+          body: JSON.stringify({
+            to: prod.email,
+            subject: `Willkommen bei Trustory: ${prod.name}`,
+            html: `<div style="font-family: sans-serif; padding: 40px; text-align: center; background: #f8fafc;">
+                    <h1 style="color: #1e293b;">Produktion Bereit</h1>
+                    <p style="color: #64748b;">Ihr Feedback-System für <b>${prod.name}</b> wurde aktiviert.</p>
+                    <a href="${inviteUrl}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">Zum Dashboard</a>
+                    <p style="font-size: 12px; color: #94a3b8;">Sicher am Set mit Trustory Safe on Set.</p>
+                   </div>`
+          })
+        });
+        alert("Einladung versendet!");
+      } catch (emailErr) {
+        console.warn("Email function not available in preview:", emailErr);
+        alert(`Produktion wurde eingeladen, aber die E-Mail konnte in dieser Testumgebung nicht versendet werden.\nURL: ${inviteUrl}`);
+      }
     } catch (err: any) {
       console.error("Failed to invite:", err);
+      alert("Fehler bei der Einladung: " + err.message);
     }
   };
 
