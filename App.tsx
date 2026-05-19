@@ -87,7 +87,13 @@ function App() {
       // TEST: Einfacher Count um RLS/Existenz zu prüfen
       const { count, error: countErr } = await supabase.from('productions').select('*', { count: 'exact', head: true });
       if (!countErr) {
-          setDbDiagnostic(`Datenbank meldet ${count || 0} Produktionen.`);
+          console.log(`Datenbank-Check: ${count || 0} Produktionen vorhanden.`);
+          // Wir setzen keinen Fehler-Status mehr, wenn Daten da sind
+          if (count === 0) {
+            setDbError("0 Produktionen gefunden. Bitte Reparatur-Code nutzen.");
+          } else {
+            setDbError(null);
+          }
       }
       const { data: prods, error: prodError } = await supabase.from('productions').select('*');
       
