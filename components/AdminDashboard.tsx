@@ -464,73 +464,97 @@ CREATE TABLE IF NOT EXISTS productions (
                         <span className="text-emerald-500 text-xs font-black uppercase">{selectedProd.status}</span>
                     </div>
 
-                    <div className="pt-6 border-t border-white/5">
+                    {/* CO-ADMIN SECTION */}
+                    <div className="pt-6 border-t border-white/10 mt-4">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Co-Admins (Max 2)</h3>
+                            <div className="flex flex-col">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Co-Admins</h3>
+                                <span className="text-[9px] text-slate-500">Maximal 2 zusätzliche Verwalter</span>
+                            </div>
                             {(selectedProd.co_admins || []).length < 2 && !isAddingCoAdmin && (
-                                <button onClick={() => setIsAddingCoAdmin(true)} className="text-blue-400 text-[10px] font-bold uppercase flex items-center gap-1">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setIsAddingCoAdmin(true); }} 
+                                    className="px-3 py-1.5 bg-blue-600/20 text-blue-400 text-[10px] font-black rounded-lg uppercase hover:bg-blue-600 hover:text-white transition-all flex items-center gap-1.5"
+                                >
                                     <Plus size={12} /> Hinzufügen
                                 </button>
                             )}
                         </div>
 
                         {isAddingCoAdmin ? (
-                            <div className="bg-black/20 p-4 rounded-2xl border border-white/10 space-y-3 mb-4 animate-in slide-in-from-top-2">
+                            <div className="bg-blue-500/5 p-5 rounded-2xl border border-blue-500/20 space-y-3 mb-6 animate-in slide-in-from-top-2 border-dashed">
                                 <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold uppercase text-slate-500 ml-1">Vorname</label>
+                                        <input 
+                                            placeholder="z.B. Max" 
+                                            value={coAdminFirstName}
+                                            onChange={e => setCoAdminFirstName(e.target.value)}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold uppercase text-slate-500 ml-1">Nachname</label>
+                                        <input 
+                                            placeholder="z.B. Mustermann" 
+                                            value={coAdminLastName}
+                                            onChange={e => setCoAdminLastName(e.target.value)}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase text-slate-500 ml-1">E-Mail Adresse</label>
                                     <input 
-                                        placeholder="Vorname" 
-                                        value={coAdminFirstName}
-                                        onChange={e => setCoAdminFirstName(e.target.value)}
-                                        className="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs"
-                                    />
-                                    <input 
-                                        placeholder="Nachname" 
-                                        value={coAdminLastName}
-                                        onChange={e => setCoAdminLastName(e.target.value)}
-                                        className="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs"
+                                        placeholder="beispiel@mail.de" 
+                                        value={coAdminEmail}
+                                        onChange={e => setCoAdminEmail(e.target.value)}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                                     />
                                 </div>
-                                <input 
-                                    placeholder="E-Mail" 
-                                    value={coAdminEmail}
-                                    onChange={e => setCoAdminEmail(e.target.value)}
-                                    className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs"
-                                />
-                                <div className="flex gap-2">
-                                    <button onClick={() => setIsAddingCoAdmin(false)} className="flex-1 py-2 bg-slate-800 rounded-lg text-[10px] font-bold uppercase">Abbrechen</button>
-                                    <button onClick={handleAddCoAdmin} className="flex-1 py-2 bg-blue-600 rounded-lg text-[10px] font-bold uppercase">Einladen</button>
+                                <div className="flex gap-2 pt-2">
+                                    <button onClick={() => setIsAddingCoAdmin(false)} className="flex-1 py-3 bg-slate-800 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-white transition-colors">Abbrechen</button>
+                                    <button onClick={handleAddCoAdmin} className="flex-1 py-3 bg-blue-600 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-900/40">Einladung senden</button>
                                 </div>
                             </div>
                         ) : (
                             <div className="space-y-2">
                                 {(selectedProd.co_admins || []).map((ca, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-                                        <div>
-                                            <div className="font-bold text-white">{ca.first_name} {ca.last_name}</div>
-                                            <div className="text-[10px] text-slate-500">{ca.email}</div>
+                                    <div key={ca.id} className="group flex justify-between items-center p-4 bg-white/5 hover:bg-white/[0.07] rounded-2xl border border-white/5 transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 font-bold text-xs">
+                                                {ca.first_name[0]}{ca.last_name[0]}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-white text-sm">{ca.first_name} {ca.last_name}</div>
+                                                <div className="text-[10px] text-slate-500">{ca.email}</div>
+                                            </div>
                                         </div>
                                         <button 
-                                            onClick={async () => {
-                                                if(!confirm("Co-Admin entfernen?")) return;
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if(!confirm(`Möchten Sie ${ca.first_name} ${ca.last_name} als Co-Admin entfernen?`)) return;
                                                 const filtered = (selectedProd.co_admins || []).filter((_, i) => i !== idx);
                                                 await supabase.from('productions').update({ co_admins: filtered }).eq('id', selectedProd.id);
                                                 onUpdateProduction(selectedProd.id, { co_admins: filtered });
                                                 setSelectedProd({...selectedProd, co_admins: filtered});
                                             }}
-                                            className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
+                                            className="p-2.5 text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
                                         >
                                             <Trash2 size={14} />
                                         </button>
                                     </div>
                                 ))}
                                 {(selectedProd.co_admins || []).length === 0 && (
-                                    <div className="text-center py-4 text-slate-600 text-xs italic">Keine Co-Admins hinterlegt.</div>
+                                    <div className="text-center py-6 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
+                                        <p className="text-slate-500 text-[10px] font-medium italic">Noch keine Co-Admins hinzugefügt.</p>
+                                    </div>
                                 )}
                             </div>
                         )}
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-8 mb-4">
                        <button onClick={() => { if(confirm("Archivieren?")) onUpdateProduction(selectedProd.id, {status: 'Finished'}); setSelectedProd(null); }} className="w-full py-4 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest rounded-2xl">
                            Produktion Archivieren
                        </button>
