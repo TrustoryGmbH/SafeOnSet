@@ -23,6 +23,7 @@ const mapProduction = (p: any): Production => ({
   email: p.email,
   status: p.status,
   team: p.team || [],
+  co_admins: p.co_admins || [],
   country: p.country,
   periodStart: p.period_start,
   periodEnd: p.period_end
@@ -43,6 +44,82 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newEmail, setNewEmail] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedProd, setSelectedProd] = useState<Production | null>(null);
+  
+  // Co-Admin states
+  const [coAdminFirstName, setCoAdminFirstName] = useState('');
+  const [coAdminLastName, setCoAdminLastName] = useState('');
+  const [coAdminEmail, setCoAdminEmail] = useState('');
+  const [isAddingCoAdmin, setIsAddingCoAdmin] = useState(false);
+
+  const handleAddCoAdmin = async () => {
+    if (!selectedProd || !coAdminFirstName || !coAdminLastName || !coAdminEmail) return;
+    
+    const newCoAdmin = {
+        id: Math.random().toString(36).substring(7),
+        first_name: coAdminFirstName,
+        last_name: coAdminLastName,
+        email: coAdminEmail
+    };
+
+    const currentCoAdmins = selectedProd.co_admins || [];
+    if (currentCoAdmins.length >= 2) {
+        alert("Maximal 2 Co-Admins erlaubt.");
+        return;
+    }
+
+    const updatedCoAdmins = [...currentCoAdmins, newCoAdmin];
+    
+    try {
+        // Update DB
+        const { error } = await supabase.from('productions').update({ 
+            co_admins: updatedCoAdmins 
+        }).eq('id', selectedProd.id);
+        
+        if (error) throw error;
+        
+        // Update local state via App.tsx prop if available, or just refetch. 
+        // For now, let's use onUpdateProduction
+        onUpdateProduction(selectedProd.id, { co_admins: updatedCoAdmins });
+        
+        // Trigger Invite
+        handleInviteCoAdmin(selectedProd, newCoAdmin);
+        
+        // Reset
+        setCoAdminFirstName('');
+        setCoAdminLastName('');
+        setCoAdminEmail('');
+        setIsAddingCoAdmin(false);
+        setSelectedProd({ ...selectedProd, co_admins: updatedCoAdmins });
+    } catch (err: any) {
+        alert("Error adding Co-Admin: " + err.message);
+    }
+  };
+
+  const handleInviteCoAdmin = async (production: Production, coAdmin: any) => {
+    const inviteUrl = `${window.location.origin}/?admin_prod=${production.id}&co_user=${coAdmin.id}`;
+    
+    try {
+        await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            body: JSON.stringify({
+                to: coAdmin.email,
+                subject: `Admin-Einladung für ${production.name}`,
+                html: `<div style="font-family: sans-serif; padding: 40px; text-align: center; background: #f8fafc;">
+                        <h1 style="color: #1e293b;">Admin Zugang</h1>
+                        <p style="color: #64748b;">Hallo ${coAdmin.first_name}, Sie wurden als Co-Admin für <b>${production.name}</b> hinzugefügt.</p>
+                        <div style="margin: 30px 0;">
+                            <a href="${inviteUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: white; text-decoration: none; border-radius: 12px; font-weight: bold;">Zum Admin Portal</a>
+                        </div>
+                        <p style="font-size: 12px; color: #94a3b8;">Nach Klick auf den Link wird Ihnen ein Sicherheitscode per E-Mail zugestellt.</p>
+                       </div>`
+            })
+        });
+        alert(`Einladung an ${coAdmin.email} versendet!`);
+    } catch (err) {
+        console.warn("Email error:", err);
+        alert(`Einladung konnte nicht versendet werden. Manueller Link: ${inviteUrl}`);
+    }
+  };
 
   const handleCreate = () => {
     if (!newProdName || !newEmail) return;
@@ -69,6 +146,10 @@ ADD COLUMN IF NOT EXISTS end_period TEXT,
 ADD COLUMN IF NOT EXISTS billing_address TEXT,
 ADD COLUMN IF NOT EXISTS office_address TEXT,
 ADD COLUMN IF NOT EXISTS phone TEXT;
+
+-- UPDATE: Productions Tabelle
+ALTER TABLE productions
+ADD COLUMN IF NOT EXISTS co_admins JSONB DEFAULT '[]'::jsonb;
 
 -- Standard Tabelle falls noch gar nicht vorhanden
 CREATE TABLE IF NOT EXISTS access_requests (
@@ -99,6 +180,7 @@ CREATE TABLE IF NOT EXISTS productions (
   email TEXT NOT NULL,
   status TEXT DEFAULT 'Active',
   team JSONB DEFAULT '[]'::jsonb,
+  co_admins JSONB DEFAULT '[]'::jsonb,
   country TEXT,
   period_start TEXT,
   period_end TEXT,
@@ -370,7 +452,7 @@ CREATE TABLE IF NOT EXISTS productions (
                    </div>
                    <button onClick={() => setSelectedProd(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
                 </div>
-                <div className="p-8 space-y-4 text-slate-300 text-sm">
+                <div className="p-8 space-y-4 text-slate-300 text-sm overflow-y-auto max-h-[60vh]">
                     <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
                         <span className="font-bold">Dashboard Link</span>
                         <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/?prod=${selectedProd.id}`); alert("URL kopiert!"); }} className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors">
@@ -381,6 +463,73 @@ CREATE TABLE IF NOT EXISTS productions (
                         <span className="font-bold">Status</span>
                         <span className="text-emerald-500 text-xs font-black uppercase">{selectedProd.status}</span>
                     </div>
+
+                    <div className="pt-6 border-t border-white/5">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Co-Admins (Max 2)</h3>
+                            {(selectedProd.co_admins || []).length < 2 && !isAddingCoAdmin && (
+                                <button onClick={() => setIsAddingCoAdmin(true)} className="text-blue-400 text-[10px] font-bold uppercase flex items-center gap-1">
+                                    <Plus size={12} /> Hinzufügen
+                                </button>
+                            )}
+                        </div>
+
+                        {isAddingCoAdmin ? (
+                            <div className="bg-black/20 p-4 rounded-2xl border border-white/10 space-y-3 mb-4 animate-in slide-in-from-top-2">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input 
+                                        placeholder="Vorname" 
+                                        value={coAdminFirstName}
+                                        onChange={e => setCoAdminFirstName(e.target.value)}
+                                        className="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs"
+                                    />
+                                    <input 
+                                        placeholder="Nachname" 
+                                        value={coAdminLastName}
+                                        onChange={e => setCoAdminLastName(e.target.value)}
+                                        className="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs"
+                                    />
+                                </div>
+                                <input 
+                                    placeholder="E-Mail" 
+                                    value={coAdminEmail}
+                                    onChange={e => setCoAdminEmail(e.target.value)}
+                                    className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs"
+                                />
+                                <div className="flex gap-2">
+                                    <button onClick={() => setIsAddingCoAdmin(false)} className="flex-1 py-2 bg-slate-800 rounded-lg text-[10px] font-bold uppercase">Abbrechen</button>
+                                    <button onClick={handleAddCoAdmin} className="flex-1 py-2 bg-blue-600 rounded-lg text-[10px] font-bold uppercase">Einladen</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {(selectedProd.co_admins || []).map((ca, idx) => (
+                                    <div key={idx} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                                        <div>
+                                            <div className="font-bold text-white">{ca.first_name} {ca.last_name}</div>
+                                            <div className="text-[10px] text-slate-500">{ca.email}</div>
+                                        </div>
+                                        <button 
+                                            onClick={async () => {
+                                                if(!confirm("Co-Admin entfernen?")) return;
+                                                const filtered = (selectedProd.co_admins || []).filter((_, i) => i !== idx);
+                                                await supabase.from('productions').update({ co_admins: filtered }).eq('id', selectedProd.id);
+                                                onUpdateProduction(selectedProd.id, { co_admins: filtered });
+                                                setSelectedProd({...selectedProd, co_admins: filtered});
+                                            }}
+                                            className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {(selectedProd.co_admins || []).length === 0 && (
+                                    <div className="text-center py-4 text-slate-600 text-xs italic">Keine Co-Admins hinterlegt.</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
                     <div className="pt-4">
                        <button onClick={() => { if(confirm("Archivieren?")) onUpdateProduction(selectedProd.id, {status: 'Finished'}); setSelectedProd(null); }} className="w-full py-4 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest rounded-2xl">
                            Produktion Archivieren

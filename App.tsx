@@ -18,6 +18,7 @@ const mapProduction = (p: any): Production => ({
   email: p.email,
   status: p.status,
   team: p.team || [],
+  co_admins: p.co_admins || [],
   country: p.country,
   periodStart: p.period_start,
   periodEnd: p.period_end
@@ -39,6 +40,7 @@ function App() {
   const [isSandboxMode, setIsSandboxMode] = useState(false);
   const [isAdminReviewing, setIsAdminReviewing] = useState(false);
   const [activeProductionId, setActiveProductionId] = useState<string | null>(null);
+  const [coAdminInfo, setCoAdminInfo] = useState<{ prodId: string; userId: string; email: string } | null>(null);
 
   // 10-Sekunden Polling für Echtzeit-Updates
   useEffect(() => {
@@ -83,6 +85,8 @@ function App() {
 
       const params = new URLSearchParams(window.location.search);
       const prodId = params.get('prod');
+      const adminProdId = params.get('admin_prod');
+      const coUserId = params.get('co_user');
 
       if (prodId) {
         setActiveProductionId(prodId);
@@ -90,6 +94,18 @@ function App() {
             setIsSandboxMode(true);
         }
         setView('mobile');
+      } else if (adminProdId && coUserId) {
+         // Find production and the co-admin
+         const targetProd = mappedProds.find(p => p.id === adminProdId);
+         const coAdmin = (targetProd?.co_admins || []).find((ca: any) => ca.id === coUserId);
+         
+         if (coAdmin) {
+            setCoAdminInfo({ prodId: adminProdId, userId: coUserId, email: coAdmin.email });
+            handleSendOTP(coAdmin.email);
+            setView('login'); // Reuse login for OTP but with co-admin context
+         } else {
+            alert("Ungültiger Admin-Link.");
+         }
       }
 
       const { data: msgs } = await supabase.from('messages').select('*').order('date', { ascending: false });
@@ -359,7 +375,22 @@ function App() {
   if (view === 'login' || view === 'admin-login') return (
     <Login 
         isAdminMode={view === 'admin-login'}
-        onLogin={handleLogin} 
+        onLogin={(email) => {
+            if (coAdminInfo) {
+                // Co-Admin confirmed their OTP
+                setActiveProductionId(coAdminInfo.prodId);
+                setIsAdminReviewing(true);
+                setView('dashboard');
+                setCoAdminInfo(null);
+                // Clean URL
+                const url = new URL(window.location.href);
+                url.searchParams.delete('admin_prod');
+                url.searchParams.delete('co_user');
+                window.history.replaceState({}, '', url.toString());
+            } else {
+                handleLogin(email);
+            }
+        }} 
         lang={lang} 
         setLang={setLang} 
         onAdminClick={() => setView(view === 'login' ? 'admin-login' : 'login')} 
@@ -367,6 +398,7 @@ function App() {
         onSendOTP={handleSendOTP} 
         expectedOTP={expectedOTP} 
         initialShowRegister={loginViewMode === 'register'}
+        coAdminEmail={coAdminInfo?.email}
     />
   );
   

@@ -126,12 +126,13 @@ interface LoginProps {
   expectedOTP: string;
   isAdminMode?: boolean;
   initialShowRegister?: boolean;
+  coAdminEmail?: string;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onRegister, onSendOTP, expectedOTP, isAdminMode = false, initialShowRegister = false }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onRegister, onSendOTP, expectedOTP, isAdminMode = false, initialShowRegister = false, coAdminEmail }) => {
   const t = TRANSLATIONS[lang];
-  const [step, setStep] = useState<'email' | 'otp'>('email');
-  const [email, setEmail] = useState('');
+  const [step, setStep] = useState<'email' | 'otp'>(coAdminEmail ? 'otp' : 'email');
+  const [email, setEmail] = useState(coAdminEmail || '');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);

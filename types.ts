@@ -46,9 +46,17 @@ export interface Production {
   email: string;
   status: 'Active' | 'Pending' | 'Invited' | 'Finished' | 'Test';
   team?: TeamMember[];
+  co_admins?: CoAdmin[];
   country?: string;
   periodStart?: string;
   periodEnd?: string;
+}
+
+export interface CoAdmin {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
 }
 
 export interface TeamMember {
