@@ -81,8 +81,14 @@ function App() {
     try {
       setIsInitialLoading(true);
       setDbError(null);
+      setDbDiagnostic(null);
       
       console.log("App: InitData gestartet...");
+      // TEST: Einfacher Count um RLS/Existenz zu prüfen
+      const { count, error: countErr } = await supabase.from('productions').select('*', { count: 'exact', head: true });
+      if (!countErr) {
+          setDbDiagnostic(`Datenbank meldet ${count || 0} Produktionen.`);
+      }
       const { data: prods, error: prodError } = await supabase.from('productions').select('*');
       
       let finalProds: Production[] = [];
@@ -161,6 +167,7 @@ function App() {
   };
 
   const [dbError, setDbError] = useState<string | null>(null);
+  const [dbDiagnostic, setDbDiagnostic] = useState<string | null>(null);
 
   const handleLogin = (email: string) => {
     setCurrentUser(email);
@@ -452,7 +459,7 @@ function App() {
         onViewFeedback={handleViewProduction}
         onDownloadReport={handleDownloadReport}
         onRefresh={initData}
-        dbError={dbError}
+        dbError={dbError || dbDiagnostic}
     />
   );
 
