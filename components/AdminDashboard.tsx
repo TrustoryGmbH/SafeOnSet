@@ -73,7 +73,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         id: Math.random().toString(36).substring(7),
         first_name: coAdminFirstName,
         last_name: coAdminLastName,
-        email: coAdminEmail
+        email: coAdminEmail,
+        verified: false,
+        added_at: new Date().toISOString()
     };
 
     const currentCoAdmins = selectedProd.co_admins || [];
@@ -115,30 +117,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         alert(err.message);
     }
   };
-
   const handleInviteCoAdmin = async (production: Production, coAdmin: any) => {
-    const inviteUrl = `${window.location.origin}/?admin_prod=${production.id}&co_user=${coAdmin.id}`;
+    const verificationUrl = `${window.location.origin}/?admin_prod=${production.id}&co_user=${coAdmin.id}`;
     
     try {
         await fetch('/.netlify/functions/send-email', {
             method: 'POST',
             body: JSON.stringify({
                 to: coAdmin.email,
-                subject: `Admin-Einladung für ${production.name}`,
-                html: `<div style="font-family: sans-serif; padding: 40px; text-align: center; background: #f8fafc;">
-                        <h1 style="color: #1e293b;">Admin Zugang</h1>
-                        <p style="color: #64748b;">Hallo ${coAdmin.first_name}, Sie wurden als Co-Admin für <b>${production.name}</b> hinzugefügt.</p>
-                        <div style="margin: 30px 0;">
-                            <a href="${inviteUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: white; text-decoration: none; border-radius: 12px; font-weight: bold;">Zum Admin Portal</a>
+                subject: `Einladung zur Kooperation: ${production.name}`,
+                html: `<div style="font-family: sans-serif; padding: 40px; text-align: center; background: #f8fafc; color: #1e293b;">
+                        <h1 style="color: #2563eb; font-size: 24px; margin-bottom: 8px;">Einladung zur Produktion</h1>
+                        <p style="color: #64748b; margin-bottom: 24px;">Hallo ${coAdmin.first_name}, Sie wurden als Co-Admin für das Projekt <b>${production.name}</b> angefragt.</p>
+                        
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 32px; border-radius: 20px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                            <p style="margin-bottom: 24px; font-weight: 500;">Bitte bestätigen Sie die Einladung, um Zugriff zu erhalten:</p>
+                            <a href="${verificationUrl}" style="display: inline-block; padding: 14px 28px; background: #1e293b; color: white; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 14px;">Einladung annehmen</a>
                         </div>
-                        <p style="font-size: 12px; color: #94a3b8;">Nach Klick auf den Link wird Ihnen ein Sicherheitscode per E-Mail zugestellt.</p>
+                        
+                        <p style="font-size: 11px; color: #94a3b8; margin-top: 32px;">Trustory Safe on Set • Datenschutz-konforme Überwachung.</p>
                        </div>`
             })
         });
         alert(`Einladung an ${coAdmin.email} versendet!`);
     } catch (err) {
         console.warn("Email error:", err);
-        alert(`Einladung konnte nicht versendet werden. Manueller Link: ${inviteUrl}`);
+        alert(`Einladung konnte nicht versendet werden. Manueller Link: ${verificationUrl}`);
     }
   };
 
@@ -644,9 +648,29 @@ VALUES ('SUPERIOR', 'kutzner.nils@yahoo.de', 'info@vonwesternhagen.com', 'Invite
                                             <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 font-bold text-xs">
                                                 {ca.first_name[0]}{ca.last_name[0]}
                                             </div>
-                                            <div>
-                                                <div className="font-bold text-white text-sm">{ca.first_name} {ca.last_name}</div>
-                                                <div className="text-[10px] text-slate-500">{ca.email}</div>
+                                            <div className="flex flex-col relative">
+                                                <div className="font-bold text-white text-sm flex items-center gap-2">
+                                                    {ca.first_name} {ca.last_name}
+                                                    {ca.verified ? (
+                                                        <ShieldCheck size={12} className="text-emerald-500" />
+                                                    ) : (
+                                                        <Clock size={12} className="text-amber-500 animate-pulse" />
+                                                    )}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 flex items-center gap-2">
+                                                    {ca.email} 
+                                                    {!ca.verified && (
+                                                        <>
+                                                            <span className="text-[8px] bg-amber-500/10 text-amber-500 px-1 rounded uppercase font-black">Pending</span>
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleInviteCoAdmin(selectedProd, ca); }}
+                                                                className="text-[8px] text-blue-400 hover:text-blue-300 underline font-bold"
+                                                            >
+                                                                Link erneut senden
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <button 

@@ -39,6 +39,7 @@ function App() {
 
   const [isSandboxMode, setIsSandboxMode] = useState(false);
   const [isAdminReviewing, setIsAdminReviewing] = useState(false);
+  const [isRestrictedCoAdmin, setIsRestrictedCoAdmin] = useState(false);
   const [activeProductionId, setActiveProductionId] = useState<string | null>(null);
   const [coAdminInfo, setCoAdminInfo] = useState<{ prodId: string; userId: string; email: string } | null>(null);
 
@@ -176,6 +177,51 @@ function App() {
 
   const [dbError, setDbError] = useState<string | null>(null);
   const [dbDiagnostic, setDbDiagnostic] = useState<string | null>(null);
+
+  const handleVerifyCoAdmin = async (prodId: string, coUserId: string) => {
+    try {
+      const { data: prodData } = await supabase.from('productions').select('name, co_admins').eq('id', prodId).single();
+      if (!prodData) return;
+
+      const coAdmins = prodData.co_admins || [];
+      const targetCoAdmin = coAdmins.find((ca: any) => ca.id === coUserId);
+      if (!targetCoAdmin || targetCoAdmin.verified) return;
+
+      const updatedCoAdmins = coAdmins.map((ca: any) => 
+        ca.id === coUserId ? { ...ca, verified: true } : ca
+      );
+
+      await supabase.from('productions').update({ co_admins: updatedCoAdmins }).eq('id', prodId);
+      setProductions(prev => prev.map(p => p.id === prodId ? { ...p, co_admins: updatedCoAdmins } : p));
+
+      // Send Super-Link Welcome Email
+      const superLink = `${window.location.origin}/?admin_prod=${prodId}&co_user=${coUserId}`;
+      try {
+        await fetch('/.netlify/functions/send-email', {
+          method: 'POST',
+          body: JSON.stringify({
+            to: targetCoAdmin.email,
+            subject: `Verifizierung erfolgreich: Ihr Super-Link für ${prodData.name}`,
+            html: `<div style="font-family: sans-serif; padding: 40px; text-align: center; background: #0f172a; color: white; border-radius: 24px;">
+                    <div style="background: #1e293b; padding: 32px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                        <h1 style="color: #60a5fa; margin-bottom: 16px;">Willkommen im Team</h1>
+                        <p style="color: #94a3b8; font-size: 16px; margin-bottom: 32px;">Ihre Verifizierung als Co-Admin für <b>${prodData.name}</b> war erfolgreich.</p>
+                        
+                        <p style="color: #cbd5e1; font-size: 14px; margin-bottom: 24px;">Hier ist Ihr persönlicher Super-Link für den direkten Zugriff (bitte sicher aufbewahren):</p>
+                        
+                        <a href="${superLink}" style="display: inline-block; padding: 16px 32px; background: #2563eb; color: white; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 10px 15px -3px rgba(37,99,235,0.4);">DASHBOARD ÖFFNEN</a>
+                    </div>
+                    <p style="font-size: 11px; color: #475569; margin-top: 32px;">Safe on Set © 2026 • Trustory GmbH</p>
+                   </div>`
+          })
+        });
+      } catch (e) {
+        console.warn("Welcome email failed:", e);
+      }
+    } catch (err) {
+      console.error("Verification failed:", err);
+    }
+  };
 
   const handleLogin = (email: string) => {
     setCurrentUser(email);
@@ -432,8 +478,10 @@ function App() {
         onLogin={(email) => {
             if (coAdminInfo) {
                 // Co-Admin confirmed their OTP
+                handleVerifyCoAdmin(coAdminInfo.prodId, coAdminInfo.userId);
                 setActiveProductionId(coAdminInfo.prodId);
                 setIsAdminReviewing(true);
+                setIsRestrictedCoAdmin(true);
                 setView('dashboard');
                 setCoAdminInfo(null);
                 // Clean URL
@@ -456,20 +504,26 @@ function App() {
     />
   );
   
-  if (view === 'admin-dashboard') return (
-    <AdminDashboard 
-        lang={lang} 
-        productions={productions} 
-        onLogout={() => setView('landing')} 
-        onAddProduction={handleCreateProduction} 
-        onInvite={handleInviteProduction} 
-        onUpdateProduction={handleUpdateProduction} 
-        onViewFeedback={handleViewProduction}
-        onDownloadReport={handleDownloadReport}
-        onRefresh={initData}
-        dbError={dbError || dbDiagnostic}
-    />
-  );
+  if (view === 'admin-dashboard') {
+    if (isRestrictedCoAdmin) {
+       setView('dashboard');
+       return null;
+    }
+    return (
+      <AdminDashboard 
+          lang={lang} 
+          productions={productions} 
+          onLogout={() => { setView('landing'); setIsAdminReviewing(false); }} 
+          onAddProduction={handleCreateProduction} 
+          onInvite={handleInviteProduction} 
+          onUpdateProduction={handleUpdateProduction} 
+          onViewFeedback={handleViewProduction}
+          onDownloadReport={handleDownloadReport}
+          onRefresh={initData}
+          dbError={dbError || dbDiagnostic}
+      />
+    );
+  }
 
   return (
     <div className={`h-screen w-full bg-[#0f172a] text-white flex flex-col relative ${lang === 'ar' ? 'font-tajawal' : ''}`} dir={t.dir}>
@@ -481,20 +535,28 @@ function App() {
           </div>
           <div className={`flex items-center gap-1.5 px-3 py-1 ${isConnected ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} border rounded-full`}>
             {isConnected ? <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> : <WifiOff size={10} className="text-rose-500" />}
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? 'text-emerald-500' : 'text-rose-500'}`}>{isConnected ? (isSandboxMode ? 'Sandbox' : (isAdminReviewing ? 'Admin View' : 'Live Cloud')) : 'Offline'}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? 'text-emerald-500' : 'text-rose-500'}`}>
+              {isConnected ? (
+                isSandboxMode ? 'Sandbox' : (
+                  isAdminReviewing ? (isRestrictedCoAdmin ? 'Co-Admin View' : 'Admin View') : 'Live Cloud'
+                )
+              ) : 'Offline'}
+            </span>
           </div>
         </div>
         <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { 
-            if (isAdminReviewing) {
+            if (isAdminReviewing && !isRestrictedCoAdmin) {
                 setView('admin-dashboard');
                 setIsAdminReviewing(false);
             } else {
                 setIsSandboxMode(false); 
+                setIsRestrictedCoAdmin(false);
+                setIsAdminReviewing(false);
                 setCurrentUser(''); 
                 setView('landing'); 
             }
         }}>
-          <LogOut size={14} />{isAdminReviewing ? 'Back to Admin' : t.logout}
+          <LogOut size={14} />{(isAdminReviewing && !isRestrictedCoAdmin) ? 'Back to Admin' : t.logout}
         </button>
       </header>
       <main className="flex-1 flex flex-col items-center justify-center px-8">

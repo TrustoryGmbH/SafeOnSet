@@ -1,0 +1,6 @@
+
+[functions]
+  directory = "functions"
+
+[functions."weekly-report"]
+  schedule = "0 6 * * 1" # Jede Woche Montag um 6:00 AM
