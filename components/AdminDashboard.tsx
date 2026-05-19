@@ -19,7 +19,7 @@ interface AdminDashboardProps {
 const mapProduction = (p: any): Production => ({
   id: p.id,
   name: p.name,
-  coordinator: p.coordinator,
+  coordinator: p.coordinator || p.contact_person || 'N/A',
   email: p.email,
   status: p.status,
   team: p.team || [],
@@ -356,8 +356,11 @@ CREATE TABLE IF NOT EXISTS productions (
                   <tbody className="divide-y divide-white/5">
                       {productions.map(prod => (
                           <tr key={prod.id} className="hover:bg-white/5 transition-colors">
-                              <td className="p-4 font-bold text-slate-200">{prod.name}</td>
-                              <td className="p-4 text-slate-400 text-sm">{prod.email}</td>
+                              <td className="p-4 font-bold text-slate-200 uppercase tracking-tight">{prod.name}</td>
+                              <td className="p-4 text-slate-400 text-sm">
+                                <div className="text-white font-medium mb-0.5">{prod.coordinator}</div>
+                                <div className="text-[10px] opacity-50">{prod.email}</div>
+                              </td>
                               <td className="p-4">
                                   <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${prod.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>{prod.status}</span>
                               </td>
@@ -379,6 +382,19 @@ CREATE TABLE IF NOT EXISTS productions (
                               </td>
                           </tr>
                       ))}
+                      {productions.length === 0 && (
+                          <tr>
+                              <td colSpan={4} className="p-12 text-center text-slate-500">
+                                  <div className="flex flex-col items-center gap-3">
+                                      <div className="p-4 bg-slate-700/20 rounded-full">
+                                          <Shield size={32} className="opacity-20" />
+                                      </div>
+                                      <p className="text-sm italic">Noch keine aktiven Produktionen in der Datenbank.</p>
+                                      <button onClick={() => window.location.reload()} className="text-blue-500 text-[10px] font-bold uppercase underline">Liste neu laden</button>
+                                  </div>
+                              </td>
+                          </tr>
+                      )}
                   </tbody>
               </table>
            </div>

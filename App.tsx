@@ -14,7 +14,7 @@ import { LogOut, WifiOff, Loader2, Beaker, AlertTriangle } from 'lucide-react';
 const mapProduction = (p: any): Production => ({
   id: p.id,
   name: p.name,
-  coordinator: p.coordinator,
+  coordinator: p.coordinator || p.contact_person || 'N/A',
   email: p.email,
   status: p.status,
   team: p.team || [],
@@ -79,9 +79,23 @@ function App() {
 
   const initData = async () => {
     try {
-      const { data: prods } = await supabase.from('productions').select('*');
-      const mappedProds = (prods || []).map(mapProduction);
-      setProductions(mappedProds);
+      const { data: prods, error } = await supabase.from('productions').select('*');
+      
+      if (error) {
+        console.error("Supabase Productions Fetch Error:", error);
+        // Fallback attempt if '*' fails due to missing column
+        if (error.message.includes('column') || error.message.includes('find')) {
+            const { data: fallbackProds } = await supabase
+                .from('productions')
+                .select('id, name, email, status, team, country, period_start, period_end');
+            if (fallbackProds) {
+                setProductions(fallbackProds.map(mapProduction));
+            }
+        }
+      } else if (prods) {
+        const mappedProds = prods.map(mapProduction);
+        setProductions(mappedProds);
+      }
 
       const params = new URLSearchParams(window.location.search);
       const prodId = params.get('prod');
@@ -96,15 +110,15 @@ function App() {
         setView('mobile');
       } else if (adminProdId && coUserId) {
          // Find production and the co-admin
-         const targetProd = mappedProds.find(p => p.id === adminProdId);
+         const targetProd = (productions.length > 0 ? productions : (prods || []).map(mapProduction)).find(p => p.id === adminProdId);
          const coAdmin = (targetProd?.co_admins || []).find((ca: any) => ca.id === coUserId);
          
          if (coAdmin) {
             setCoAdminInfo({ prodId: adminProdId, userId: coUserId, email: coAdmin.email });
             handleSendOTP(coAdmin.email);
-            setView('login'); // Reuse login for OTP but with co-admin context
+            setView('login'); 
          } else {
-            alert("Ungültiger Admin-Link.");
+            console.warn("Co-Admin not found in project", adminProdId, coUserId);
          }
       }
 
