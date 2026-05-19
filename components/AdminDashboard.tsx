@@ -14,6 +14,8 @@ interface AdminDashboardProps {
   onUpdateProduction: (id: string, updates: Partial<Production>) => void;
   onViewFeedback: (id: string) => void;
   onDownloadReport: (id: string) => void;
+  onRefresh?: () => void;
+  dbError?: string | null;
 }
 
 const mapProduction = (p: any): Production => ({
@@ -30,7 +32,8 @@ const mapProduction = (p: any): Production => ({
 });
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
-  lang, onLogout, productions, onAddProduction, onInvite, onUpdateProduction, onViewFeedback, onDownloadReport
+  lang, onLogout, productions, onAddProduction, onInvite, onUpdateProduction, onViewFeedback, onDownloadReport,
+  onRefresh, dbError: externalDbError
 }) => {
   const t = TRANSLATIONS[lang];
   const [activeTab, setActiveTab] = useState<'productions' | 'requests'>('productions');
@@ -333,6 +336,20 @@ CREATE TABLE IF NOT EXISTS productions (
       </header>
 
       <main className="p-8 max-w-6xl mx-auto">
+        {externalDbError && (
+            <div className="mb-6 p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500">
+                        <AlertCircle size={20} />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-rose-500">Datenbank-Fehler</h4>
+                        <p className="text-xs text-slate-400">{externalDbError}</p>
+                    </div>
+                </div>
+                <button onClick={onRefresh} className="px-4 py-2 bg-rose-500 text-white text-[10px] font-black uppercase rounded-lg">Erneut versuchen</button>
+            </div>
+        )}
         {needsMigration && activeTab === 'productions' && (
             <div className="mb-6 p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4">
                 <div className="flex items-center gap-4">
@@ -390,7 +407,10 @@ CREATE TABLE IF NOT EXISTS productions (
                                           <Shield size={32} className="opacity-20" />
                                       </div>
                                       <p className="text-sm italic">Noch keine aktiven Produktionen in der Datenbank.</p>
-                                      <button onClick={() => window.location.reload()} className="text-blue-500 text-[10px] font-bold uppercase underline">Liste neu laden</button>
+                                      <div className="flex gap-4">
+                                        <button onClick={onRefresh} className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-500 transition-all">Daten laden</button>
+                                        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-white/5 text-slate-400 text-[10px] font-black uppercase rounded-lg hover:text-white transition-all">Seite neu laden</button>
+                                      </div>
                                   </div>
                               </td>
                           </tr>

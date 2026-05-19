@@ -79,23 +79,31 @@ function App() {
 
   const initData = async () => {
     try {
-      const { data: prods, error } = await supabase.from('productions').select('*');
+      setIsInitialLoading(true);
+      setDbError(null);
       
-      if (error) {
-        console.error("Supabase Productions Fetch Error:", error);
-        // Fallback attempt if '*' fails due to missing column
-        if (error.message.includes('column') || error.message.includes('find')) {
-            const { data: fallbackProds } = await supabase
-                .from('productions')
-                .select('id, name, email, status, team, country, period_start, period_end');
-            if (fallbackProds) {
-                setProductions(fallbackProds.map(mapProduction));
-            }
+      const { data: prods, error: prodError } = await supabase.from('productions').select('*');
+      
+      let finalProds: Production[] = [];
+
+      if (prodError) {
+        console.error("Supabase Productions Fetch Error:", prodError);
+        // Fallback attempt if '*' fails due to missing column (schema cache out of sync)
+        const { data: fallbackProds, error: fallbackError } = await supabase
+            .from('productions')
+            .select('id, name, email, status, team, country, period_start, period_end');
+        
+        if (fallbackProds) {
+            finalProds = fallbackProds.map(mapProduction);
+        } else if (fallbackError) {
+            console.error("Fallback Fetch Error:", fallbackError);
+            setDbError(fallbackError.message);
         }
       } else if (prods) {
-        const mappedProds = prods.map(mapProduction);
-        setProductions(mappedProds);
+        finalProds = prods.map(mapProduction);
       }
+
+      setProductions(finalProds);
 
       const params = new URLSearchParams(window.location.search);
       const prodId = params.get('prod');
@@ -109,16 +117,14 @@ function App() {
         }
         setView('mobile');
       } else if (adminProdId && coUserId) {
-         // Find production and the co-admin
-         const targetProd = (productions.length > 0 ? productions : (prods || []).map(mapProduction)).find(p => p.id === adminProdId);
+         // Find production using the local variable finalProds, not state (which hasn't updated yet)
+         const targetProd = finalProds.find(p => p.id === adminProdId);
          const coAdmin = (targetProd?.co_admins || []).find((ca: any) => ca.id === coUserId);
          
          if (coAdmin) {
             setCoAdminInfo({ prodId: adminProdId, userId: coUserId, email: coAdmin.email });
             handleSendOTP(coAdmin.email);
             setView('login'); 
-         } else {
-            console.warn("Co-Admin not found in project", adminProdId, coUserId);
          }
       }
 
@@ -126,16 +132,19 @@ function App() {
       setMessages(msgs || []);
 
       const { data: sched } = await supabase.from('shoot_days').select('*');
-      setSchedule(sched && sched.length > 0 ? sched : INITIAL_SCHEDULE);
+      setSchedule(sched && sched.length > 0 ? (sched as any[]).map(s => ({ ...s, day: parseInt(s.day) || s.day })) : INITIAL_SCHEDULE);
       
       setIsConnected(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Connection failed:", err);
       setIsConnected(false);
+      setDbError(err.message);
     } finally {
       setIsInitialLoading(false);
     }
   };
+
+  const [dbError, setDbError] = useState<string | null>(null);
 
   const handleLogin = (email: string) => {
     setCurrentUser(email);
@@ -426,6 +435,8 @@ function App() {
         onUpdateProduction={handleUpdateProduction} 
         onViewFeedback={handleViewProduction}
         onDownloadReport={handleDownloadReport}
+        onRefresh={initData}
+        dbError={dbError}
     />
   );
 
