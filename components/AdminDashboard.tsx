@@ -50,6 +50,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [coAdminLastName, setCoAdminLastName] = useState('');
   const [coAdminEmail, setCoAdminEmail] = useState('');
   const [isAddingCoAdmin, setIsAddingCoAdmin] = useState(false);
+  const [needsMigration, setNeedsMigration] = useState(false);
+
+  useEffect(() => {
+    // Check if co_admins column exists by trying a small select
+    const checkColumn = async () => {
+        const { error } = await supabase.from('productions').select('co_admins').limit(1);
+        if (error && (error.message.includes('column') || error.message.includes('not find'))) {
+            setNeedsMigration(true);
+        }
+    };
+    checkColumn();
+  }, []);
 
   const handleAddCoAdmin = async () => {
     if (!selectedProd || !coAdminFirstName || !coAdminLastName || !coAdminEmail) return;
@@ -75,7 +87,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             co_admins: updatedCoAdmins 
         }).eq('id', selectedProd.id);
         
-        if (error) throw error;
+        if (error) {
+            if (error.message.includes('column') || error.message.includes('cache')) {
+                setNeedsMigration(true);
+                throw new Error("Datenbank-Struktur veraltet. Bitte führen Sie das SQL-Update aus (siehe 'Requests' Tab).");
+            }
+            throw error;
+        }
         
         // Update local state via App.tsx prop if available, or just refetch. 
         // For now, let's use onUpdateProduction
@@ -91,7 +109,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setIsAddingCoAdmin(false);
         setSelectedProd({ ...selectedProd, co_admins: updatedCoAdmins });
     } catch (err: any) {
-        alert("Error adding Co-Admin: " + err.message);
+        alert(err.message);
     }
   };
 
@@ -315,6 +333,20 @@ CREATE TABLE IF NOT EXISTS productions (
       </header>
 
       <main className="p-8 max-w-6xl mx-auto">
+        {needsMigration && activeTab === 'productions' && (
+            <div className="mb-6 p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500">
+                        <AlertCircle size={20} />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-amber-500">Datenbank-Update erforderlich</h4>
+                        <p className="text-xs text-slate-400">Für die Co-Admin Funktion muss eine neue Spalte in Supabase angelegt werden.</p>
+                    </div>
+                </div>
+                <button onClick={() => setActiveTab('requests')} className="px-4 py-2 bg-amber-500 text-black text-[10px] font-black uppercase rounded-lg hover:bg-amber-400 transition-all">SQL Anzeigen</button>
+            </div>
+        )}
         {activeTab === 'productions' ? (
            <div className="bg-slate-800 border border-white/10 rounded-2xl overflow-hidden shadow-lg">
               <table className="w-full text-left">
