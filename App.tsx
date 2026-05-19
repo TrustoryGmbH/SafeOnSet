@@ -99,11 +99,25 @@ function App() {
             finalProds = fallbackProds.map(mapProduction);
         } else if (fallbackError) {
             console.error("App: Fallback ebenfalls fehlgeschlagen:", fallbackError);
-            setDbError(`Datenbank-Fehler: ${fallbackError.message}`);
+            setDbError(`Datenbank-Fehler: ${fallbackError.message}. Tabellenstruktur prüfen!`);
         }
       } else if (prods) {
         console.log(`App: Daten erfolgreich geladen, ${prods.length} Produktionen gefunden.`);
         finalProds = prods.map(mapProduction);
+      }
+
+      // DIAGNOSE: Wenn 0 Produktionen, prüfen wir ob die Tabelle überhaupt da ist
+      if (finalProds.length === 0) {
+        console.warn("App: Keine Produktionen in State geladen. Prüfe Tabellen-Existenz...");
+        const { count, error: countError } = await supabase.from('productions').select('*', { count: 'exact', head: true });
+        if (countError) {
+            setDbError(`Diagnose: Tabelle 'productions' nicht erreichbar (${countError.message})`);
+        } else {
+            console.log(`Diagnose: Tabelle existiert und hat ${count} Zeilen.`);
+            if (count && count > 0) {
+                setDbError("Daten sind in der DB vorhanden, aber werden nicht angezeigt (evtl. RLS-Berechtigung?)");
+            }
+        }
       }
 
       setProductions(finalProds);

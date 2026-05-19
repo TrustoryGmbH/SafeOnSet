@@ -420,8 +420,16 @@ CREATE TABLE IF NOT EXISTS productions (
                                       </div>
                                       <div className="text-center">
                                           <p className="text-sm font-bold text-slate-300">Keine Produktionen gefunden</p>
-                                          <p className="text-[10px] text-slate-500 mt-1 max-w-[250px] mx-auto italic">Entweder ist die Tabelle leer oder die Datenbank-Verbindung ist eingeschränkt (RLS).</p>
+                                          <p className="text-[10px] text-slate-500 mt-1 max-w-[250px] mx-auto italic">
+                                              Schauen Sie im "Anfragen Verwalten" Tab nach den SQL-Befehlen. 
+                                              Evtl. wurde die Tabelle 'productions' gelöscht oder umbenannt.
+                                          </p>
                                       </div>
+                                      {externalDbError && (
+                                          <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-[10px] text-rose-500 font-mono">
+                                              DEBUG: {externalDbError}
+                                          </div>
+                                      )}
                                       <div className="flex gap-4 mt-2">
                                         <button onClick={onRefresh} className="px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-900/20">Daten neu laden</button>
                                         <button onClick={() => window.location.reload()} className="px-5 py-2 bg-white/5 text-slate-400 text-[10px] font-black uppercase rounded-xl hover:text-white transition-all">Vollständiger Refresh</button>
