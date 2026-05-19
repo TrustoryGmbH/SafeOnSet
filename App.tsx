@@ -36,6 +36,7 @@ function App() {
   const [expectedOTP, setExpectedOTP] = useState('');
 
   const [isSandboxMode, setIsSandboxMode] = useState(false);
+  const [isAdminReviewing, setIsAdminReviewing] = useState(false);
   const [activeProductionId, setActiveProductionId] = useState<string | null>(null);
 
   // 10-Sekunden Polling für Echtzeit-Updates
@@ -107,6 +108,7 @@ function App() {
 
   const handleLogin = (email: string) => {
     setCurrentUser(email);
+    setIsAdminReviewing(false);
     if (email === 'admin@internal') {
         setView('admin-dashboard');
     } else if (email === 'test-account@internal' || email === 'XPLM2') {
@@ -116,6 +118,12 @@ function App() {
     } else {
         setView('dashboard');
     }
+  };
+
+  const handleViewProduction = (id: string) => {
+    setActiveProductionId(id);
+    setIsAdminReviewing(true);
+    setView('dashboard');
   };
 
   const handleTestCodeEntry = (code: string) => {
@@ -349,6 +357,7 @@ function App() {
         onAddProduction={handleCreateProduction} 
         onInvite={handleInviteProduction} 
         onUpdateProduction={handleUpdateProduction} 
+        onViewFeedback={handleViewProduction}
     />
   );
 
@@ -362,11 +371,20 @@ function App() {
           </div>
           <div className={`flex items-center gap-1.5 px-3 py-1 ${isConnected ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} border rounded-full`}>
             {isConnected ? <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> : <WifiOff size={10} className="text-rose-500" />}
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? 'text-emerald-500' : 'text-rose-500'}`}>{isConnected ? (isSandboxMode ? 'Sandbox' : 'Live Cloud') : 'Offline'}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? 'text-emerald-500' : 'text-rose-500'}`}>{isConnected ? (isSandboxMode ? 'Sandbox' : (isAdminReviewing ? 'Admin View' : 'Live Cloud')) : 'Offline'}</span>
           </div>
         </div>
-        <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { setIsSandboxMode(false); setCurrentUser(''); setView('landing'); }}>
-          <LogOut size={14} />{t.logout}
+        <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { 
+            if (isAdminReviewing) {
+                setView('admin-dashboard');
+                setIsAdminReviewing(false);
+            } else {
+                setIsSandboxMode(false); 
+                setCurrentUser(''); 
+                setView('landing'); 
+            }
+        }}>
+          <LogOut size={14} />{isAdminReviewing ? 'Back to Admin' : t.logout}
         </button>
       </header>
       <main className="flex-1 flex flex-col items-center justify-center px-8">

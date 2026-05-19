@@ -12,6 +12,7 @@ interface AdminDashboardProps {
   onAddProduction: (prod: Omit<Production, 'id' | 'status'>) => void;
   onInvite: (id: string) => void;
   onUpdateProduction: (id: string, updates: Partial<Production>) => void;
+  onViewFeedback: (id: string) => void;
 }
 
 const mapProduction = (p: any): Production => ({
@@ -247,9 +248,14 @@ CREATE TABLE IF NOT EXISTS productions (
                               </td>
                               <td className="p-4 text-right flex justify-end gap-2 text-slate-400">
                                   {prod.status === 'Active' && (
-                                    <button onClick={() => onInvite(prod.id)} title="Versende Einladung" className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
-                                        <Send size={14} />
-                                    </button>
+                                    <>
+                                        <button onClick={() => onViewFeedback(prod.id)} title="Feedback ansehen" className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                                            <BarChart2 size={14} />
+                                        </button>
+                                        <button onClick={() => onInvite(prod.id)} title="Versende Einladung" className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
+                                            <Send size={14} />
+                                        </button>
+                                    </>
                                   )}
                                   <button onClick={() => setSelectedProd(prod)} className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-all"><Settings size={14} /></button>
                               </td>
