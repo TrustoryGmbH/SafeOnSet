@@ -82,24 +82,27 @@ function App() {
       setIsInitialLoading(true);
       setDbError(null);
       
+      console.log("App: InitData gestartet...");
       const { data: prods, error: prodError } = await supabase.from('productions').select('*');
       
       let finalProds: Production[] = [];
 
       if (prodError) {
-        console.error("Supabase Productions Fetch Error:", prodError);
-        // Fallback attempt if '*' fails due to missing column (schema cache out of sync)
+        console.warn("App: Standard-Fetch fehlgeschlagen, versuche Fallback...", prodError.message);
+        // Fallback: Nur bekannte Spalten abfragen
         const { data: fallbackProds, error: fallbackError } = await supabase
             .from('productions')
-            .select('id, name, email, status, team, country, period_start, period_end');
+            .select('id, name, email, coordinator, status, team, country, period_start, period_end');
         
         if (fallbackProds) {
+            console.log(`App: Fallback erfolgreich, ${fallbackProds.length} Produktionen gefunden.`);
             finalProds = fallbackProds.map(mapProduction);
         } else if (fallbackError) {
-            console.error("Fallback Fetch Error:", fallbackError);
-            setDbError(fallbackError.message);
+            console.error("App: Fallback ebenfalls fehlgeschlagen:", fallbackError);
+            setDbError(`Datenbank-Fehler: ${fallbackError.message}`);
         }
       } else if (prods) {
+        console.log(`App: Daten erfolgreich geladen, ${prods.length} Produktionen gefunden.`);
         finalProds = prods.map(mapProduction);
       }
 
@@ -112,12 +115,11 @@ function App() {
 
       if (prodId) {
         setActiveProductionId(prodId);
-        if (prodId === 'test') {
+        if (prodId === 'test' || prodId === 'PREVIEW_MODE') {
             setIsSandboxMode(true);
         }
         setView('mobile');
       } else if (adminProdId && coUserId) {
-         // Find production using the local variable finalProds, not state (which hasn't updated yet)
          const targetProd = finalProds.find(p => p.id === adminProdId);
          const coAdmin = (targetProd?.co_admins || []).find((ca: any) => ca.id === coUserId);
          
@@ -136,9 +138,9 @@ function App() {
       
       setIsConnected(true);
     } catch (err: any) {
-      console.error("Connection failed:", err);
+      console.error("App: Kritischer Fehler in initData:", err);
       setIsConnected(false);
-      setDbError(err.message);
+      setDbError(`Verbindung fehlgeschlagen: ${err.message}`);
     } finally {
       setIsInitialLoading(false);
     }

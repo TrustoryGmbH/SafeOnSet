@@ -336,6 +336,18 @@ CREATE TABLE IF NOT EXISTS productions (
       </header>
 
       <main className="p-8 max-w-6xl mx-auto">
+        <div className="flex justify-between items-end mb-6">
+            <div className="flex flex-col">
+                <h2 className="text-xl font-bold text-white uppercase tracking-tight">Übersicht</h2>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{productions.length} {productions.length === 1 ? 'Produktion' : 'Produktionen'} aktiv</p>
+            </div>
+            <div className="flex gap-2">
+                <button onClick={onRefresh} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all text-slate-400 hover:text-white" title="Aktualisieren">
+                    <Save size={16} />
+                </button>
+            </div>
+        </div>
+
         {externalDbError && (
             <div className="mb-6 p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -403,13 +415,16 @@ CREATE TABLE IF NOT EXISTS productions (
                           <tr>
                               <td colSpan={4} className="p-12 text-center text-slate-500">
                                   <div className="flex flex-col items-center gap-3">
-                                      <div className="p-4 bg-slate-700/20 rounded-full">
-                                          <Shield size={32} className="opacity-20" />
+                                      <div className="p-4 bg-slate-700/20 rounded-full text-slate-500">
+                                          <AlertCircle size={32} className="opacity-50" />
                                       </div>
-                                      <p className="text-sm italic">Noch keine aktiven Produktionen in der Datenbank.</p>
-                                      <div className="flex gap-4">
-                                        <button onClick={onRefresh} className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-500 transition-all">Daten laden</button>
-                                        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-white/5 text-slate-400 text-[10px] font-black uppercase rounded-lg hover:text-white transition-all">Seite neu laden</button>
+                                      <div className="text-center">
+                                          <p className="text-sm font-bold text-slate-300">Keine Produktionen gefunden</p>
+                                          <p className="text-[10px] text-slate-500 mt-1 max-w-[250px] mx-auto italic">Entweder ist die Tabelle leer oder die Datenbank-Verbindung ist eingeschränkt (RLS).</p>
+                                      </div>
+                                      <div className="flex gap-4 mt-2">
+                                        <button onClick={onRefresh} className="px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-900/20">Daten neu laden</button>
+                                        <button onClick={() => window.location.reload()} className="px-5 py-2 bg-white/5 text-slate-400 text-[10px] font-black uppercase rounded-xl hover:text-white transition-all">Vollständiger Refresh</button>
                                       </div>
                                   </div>
                               </td>
