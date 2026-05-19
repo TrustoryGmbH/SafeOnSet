@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TRANSLATIONS } from '../constants';
 import { Language, Production, AccessRequest } from '../types';
-import { LogOut, Plus, Send, ShieldCheck, Mail, BarChart2, X, Settings, Edit2, Save, XCircle, Calendar, MapPin, Building, Shield, Check, Trash2, Clock, AlertCircle, Copy, Terminal, Eye, Info, User, Phone } from 'lucide-react';
+import { LogOut, Plus, Send, ShieldCheck, Mail, BarChart2, X, Settings, Edit2, Save, XCircle, Calendar, MapPin, Building, Shield, Check, Trash2, Clock, AlertCircle, Copy, Terminal, Eye, Info, User, Phone, FileDown } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 interface AdminDashboardProps {
@@ -13,6 +13,7 @@ interface AdminDashboardProps {
   onInvite: (id: string) => void;
   onUpdateProduction: (id: string, updates: Partial<Production>) => void;
   onViewFeedback: (id: string) => void;
+  onDownloadReport: (id: string) => void;
 }
 
 const mapProduction = (p: any): Production => ({
@@ -28,7 +29,7 @@ const mapProduction = (p: any): Production => ({
 });
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
-  lang, onLogout, productions, onAddProduction, onInvite, onUpdateProduction 
+  lang, onLogout, productions, onAddProduction, onInvite, onUpdateProduction, onViewFeedback, onDownloadReport
 }) => {
   const t = TRANSLATIONS[lang];
   const [activeTab, setActiveTab] = useState<'productions' | 'requests'>('productions');
@@ -247,12 +248,15 @@ CREATE TABLE IF NOT EXISTS productions (
                                   <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${prod.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>{prod.status}</span>
                               </td>
                               <td className="p-4 text-right flex justify-end gap-2 text-slate-400">
-                                  {prod.status === 'Active' && (
+                                  {(prod.status === 'Active' || prod.status === 'Invited') && (
                                     <>
                                         <button onClick={() => onViewFeedback(prod.id)} title="Feedback ansehen" className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm">
                                             <BarChart2 size={14} />
                                         </button>
-                                        <button onClick={() => onInvite(prod.id)} title="Versende Einladung" className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
+                                        <button onClick={() => onDownloadReport(prod.id)} title="Bericht (PDF) laden" className="p-2 bg-purple-500/10 text-purple-400 rounded-lg hover:bg-purple-600 hover:text-white transition-all shadow-sm">
+                                            <FileDown size={14} />
+                                        </button>
+                                        <button onClick={() => onInvite(prod.id)} title="Erneut einladen" className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
                                             <Send size={14} />
                                         </button>
                                     </>

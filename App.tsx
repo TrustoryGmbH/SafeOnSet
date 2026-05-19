@@ -8,6 +8,7 @@ import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import LandingPage from './components/LandingPage';
 import { supabase } from './services/supabase';
+import { generateFeedbackReportPDF } from './services/pdfGenerator';
 import { LogOut, WifiOff, Loader2, Beaker, AlertTriangle } from 'lucide-react';
 
 const mapProduction = (p: any): Production => ({
@@ -124,6 +125,26 @@ function App() {
     setActiveProductionId(id);
     setIsAdminReviewing(true);
     setView('dashboard');
+  };
+  
+  const handleDownloadReport = async (id: string) => {
+    const prod = productions.find(p => p.id === id);
+    if (!prod) return;
+    
+    try {
+      const { data: msgs, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('production_id', id)
+        .order('date', { ascending: false });
+        
+      if (error) throw error;
+      
+      generateFeedbackReportPDF(prod, msgs || []);
+    } catch (err) {
+      console.error("Failed to generate report:", err);
+      alert("Report konnte nicht generiert werden.");
+    }
   };
 
   const handleTestCodeEntry = (code: string) => {
@@ -358,6 +379,7 @@ function App() {
         onInvite={handleInviteProduction} 
         onUpdateProduction={handleUpdateProduction} 
         onViewFeedback={handleViewProduction}
+        onDownloadReport={handleDownloadReport}
     />
   );
 
