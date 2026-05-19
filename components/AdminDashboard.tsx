@@ -348,47 +348,58 @@ CREATE TABLE IF NOT EXISTS productions (
             </div>
         </div>
 
-        {externalDbError && (
+        {(externalDbError || productions.length === 0) && (
             <div className="mb-6 p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500">
-                            <AlertCircle size={20} />
+                        <div className={`w-10 h-10 rounded-full ${externalDbError ? 'bg-rose-500/20 text-rose-500' : 'bg-blue-500/20 text-blue-400'} flex items-center justify-center`}>
+                            {externalDbError ? <AlertCircle size={20} /> : <Terminal size={20} />}
                         </div>
                         <div>
-                            <h4 className="text-sm font-bold text-rose-500 uppercase tracking-tight">System-Status / Diagnose</h4>
-                            <p className="text-xs text-slate-400">{externalDbError}</p>
+                            <h4 className={`text-sm font-bold uppercase tracking-tight ${externalDbError ? 'text-rose-500' : 'text-blue-400'}`}>
+                                {externalDbError ? 'System-Status / Diagnose' : 'Produktion wiederherstellen'}
+                            </h4>
+                            <p className="text-xs text-slate-400">{externalDbError || 'Die Liste ist aktuell leer. Sie können Ihr Projekt mit dem untenstehenden SQL-Code reaktivieren.'}</p>
                         </div>
                     </div>
-                    <button onClick={onRefresh} className="px-4 py-2 bg-rose-500 text-white text-[10px] font-black uppercase rounded-lg">Erneut versuchen</button>
+                    <button onClick={onRefresh} className="px-4 py-2 bg-slate-800 text-white text-[10px] font-black uppercase rounded-lg hover:bg-slate-700 transition-all">Liste aktualisieren</button>
                 </div>
                 
-                {externalDbError.includes('0 Produktionen') && (
-                    <div className="mt-2 p-5 bg-blue-600/10 border border-blue-500/30 rounded-xl">
-                        <h5 className="text-blue-400 font-black uppercase text-[10px] mb-2 flex items-center gap-2">
-                             <Terminal size={14} /> Wo ist mein Projekt? (SUPERIOR)
-                        </h5>
-                        <p className="text-[10px] text-slate-300 mb-3 leading-relaxed">
-                            Wenn die Liste leer ist, wurde wahrscheinlich die Tabelle oder der Inhalt gelöscht. 
-                            Gehen Sie in Ihr <b>Supabase Dashboard &rarr; SQL Editor</b>, erstellen Sie eine neue Query ("New Query") und fügen Sie diesen Code ein:
-                        </p>
-                        <pre className="p-3 bg-black/40 rounded-lg text-[9px] font-mono text-emerald-400 overflow-x-auto border border-white/5 mb-3 whitespace-pre">
-{`-- REPARATUR-CODE
+                <div className="mt-2 p-5 bg-blue-600/10 border border-blue-500/30 rounded-xl">
+                    <h5 className="text-blue-400 font-black uppercase text-[10px] mb-2 flex items-center gap-2">
+                         <Terminal size={14} /> Reparatur-Code (SUPERIOR)
+                    </h5>
+                    <p className="text-[10px] text-slate-300 mb-3 leading-relaxed">
+                        Kopieren Sie diesen Code in den <b>Supabase SQL Editor</b> (New Query), um Ihre Produktion reaktivieren:
+                    </p>
+                    <pre className="p-3 bg-black/40 rounded-lg text-[9px] font-mono text-emerald-400 overflow-x-auto border border-white/5 mb-3 whitespace-pre">
+{`-- 1. Tabelle prüfen/erstellen
+CREATE TABLE IF NOT EXISTS productions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  coordinator TEXT,
+  email TEXT NOT NULL,
+  status TEXT DEFAULT 'Active',
+  team JSONB DEFAULT '[]'::jsonb,
+  co_admins JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. SUPERIOR wiederherstellen
 INSERT INTO productions (name, coordinator, email, status)
 SELECT 'SUPERIOR', 'kutzner.nils@yahoo.de', 'info@vonwesternhagen.com', 'Invited'
 WHERE NOT EXISTS (SELECT 1 FROM productions WHERE name = 'SUPERIOR');`}
-                        </pre>
-                        <button 
-                            onClick={() => {
-                                navigator.clipboard.writeText(`INSERT INTO productions (name, coordinator, email, status) SELECT 'SUPERIOR', 'kutzner.nils@yahoo.de', 'info@vonwesternhagen.com', 'Invited' WHERE NOT EXISTS (SELECT 1 FROM productions WHERE name = 'SUPERIOR');`);
-                                alert("Wiederherstellungs-Code kopiert!");
-                            }}
-                            className="w-full py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-500 transition-all"
-                        >
-                            Wiederherstellungs-Code kopieren
-                        </button>
-                    </div>
-                )}
+                    </pre>
+                    <button 
+                        onClick={() => {
+                            navigator.clipboard.writeText(`CREATE TABLE IF NOT EXISTS productions (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT NOT NULL, coordinator TEXT, email TEXT NOT NULL, status TEXT DEFAULT 'Active', team JSONB DEFAULT '[]'::jsonb, co_admins JSONB DEFAULT '[]'::jsonb, created_at TIMESTAMPTZ DEFAULT now()); INSERT INTO productions (name, coordinator, email, status) SELECT 'SUPERIOR', 'kutzner.nils@yahoo.de', 'info@vonwesternhagen.com', 'Invited' WHERE NOT EXISTS (SELECT 1 FROM productions WHERE name = 'SUPERIOR');`);
+                            alert("Wiederherstellungs-Code kopiert!");
+                        }}
+                        className="w-full py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-500 transition-all font-bold"
+                    >
+                        Wiederherstellungs-Code kopieren
+                    </button>
+                </div>
             </div>
         )}
         {needsMigration && activeTab === 'productions' && (

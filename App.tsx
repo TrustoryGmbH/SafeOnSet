@@ -120,7 +120,9 @@ function App() {
             setDbError(`Diagnose: Tabelle 'productions' nicht erreichbar (${countError.message})`);
         } else {
             console.log(`Diagnose: Tabelle existiert und hat ${count} Zeilen.`);
-            if (count && count > 0) {
+            if (count === 0) {
+                setDbError("0 Produktionen in Datenbank gefunden. Bitte Reparatur-Code nutzen.");
+            } else if (count && count > 0) {
                 setDbError("Daten sind in der DB vorhanden, aber werden nicht angezeigt (evtl. RLS-Berechtigung?)");
             }
         }
