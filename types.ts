@@ -12,8 +12,11 @@ export interface Message {
 }
 
 export interface ShootDay {
+  id?: string | number;
   day: number;
   date: string;
+  production_id?: string;
+  active?: boolean;
 }
 
 export interface AccessRequest {
