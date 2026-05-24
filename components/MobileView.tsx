@@ -21,24 +21,39 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
   const [complaintContact, setComplaintContact] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('');
   const [isClosed, setIsClosed] = useState(false);
+  const [activeDay, setActiveDay] = useState<ShootDay | null>(null);
   
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hasAlreadyVoted, setHasAlreadyVoted] = useState(false);
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const isOpen = schedule.some(s => s.date === today);
-    setIsClosed(!isOpen);
+    // Find a day explicitly marked as active in schedule
+    let active = schedule.find(s => s.active);
+    
+    // Fallback: if no day is explicitly active, check if today's date is in the schedule
+    if (!active) {
+      const today = new Date().toISOString().split('T')[0];
+      active = schedule.find(s => s.date === today);
+    }
+    
+    setActiveDay(active || null);
+    setIsClosed(!active);
 
-    const voteKey = `trustory_voted_${today}`;
-    if (localStorage.getItem(voteKey)) {
-        setHasAlreadyVoted(true);
+    if (active) {
+      const voteKey = `trustory_voted_${active.date}`;
+      if (localStorage.getItem(voteKey)) {
+          setHasAlreadyVoted(true);
+      } else {
+          setHasAlreadyVoted(false);
+      }
+    } else {
+      setHasAlreadyVoted(false);
     }
   }, [schedule]);
 
   const recordVote = () => {
-      const today = new Date().toISOString().split('T')[0];
-      const voteKey = `trustory_voted_${today}`;
+      const voteDate = activeDay?.date || new Date().toISOString().split('T')[0];
+      const voteKey = `trustory_voted_${voteDate}`;
       localStorage.setItem(voteKey, 'true');
       setIsSubmitted(true);
   };
@@ -147,6 +162,12 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
       <div className="relative z-10 flex flex-col items-center pt-8 pb-12 px-6 max-w-md mx-auto min-h-[85vh]">
         
         <div className="w-full flex flex-col items-center mb-8">
+            {activeDay && (
+              <div className="mb-3 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full animate-pulse flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                {lang === 'de' ? `Drehtag ${activeDay.day} geöffnet` : `Shoot Day ${activeDay.day} open`}
+              </div>
+            )}
             <h1 className="text-2xl md:text-3xl font-bold text-center leading-tight mb-2 tracking-tight text-white drop-shadow-sm">
                 {t.mobTitle}
             </h1>

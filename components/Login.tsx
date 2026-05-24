@@ -238,7 +238,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
           </form>
         ) : (
           <form onSubmit={(e) => { e.preventDefault(); if (otp === expectedOTP) onLogin(isAdminMode ? 'admin@internal' : email); else setError('Code falsch'); }} className="space-y-6">
-            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="••••••" className="w-full py-4 text-center bg-slate-950/50 border border-white/10 rounded-2xl text-white text-2xl font-mono tracking-[0.5em] outline-none" maxLength={6} autoFocus />
+            {/* Developer OTP Helper Banner for Local Testing */}
+            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('antigravity')) && expectedOTP && (
+              <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-xl text-center mb-6 select-all animate-pulse">
+                💡 Code für lokale Testumgebung:<br />
+                <span className="text-white font-black text-lg tracking-widest mt-1 block">{expectedOTP}</span>
+              </div>
+            )}
+            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="••••••" className="w-full py-4 text-center bg-slate-950/50 border border-white/10 rounded-2xl text-white text-2xl font-mono tracking-[0.5em] outline-none animate-in zoom-in-95 duration-200" maxLength={6} autoFocus />
             {error && <p className="text-rose-400 text-xs text-center">{error}</p>}
             <button type="submit" className={`w-full h-14 ${isAdminMode ? 'bg-purple-600' : 'bg-blue-600'} text-white font-bold rounded-2xl shadow-lg transition-all text-sm uppercase tracking-wide`}>{t.verifyCode}</button>
             

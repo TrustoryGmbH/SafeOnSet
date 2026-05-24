@@ -16,6 +16,7 @@ interface AdminDashboardProps {
   onDownloadReport: (id: string) => void;
   onRefresh?: () => void;
   dbError?: string | null;
+  isInitialLoading?: boolean;
 }
 
 const mapProduction = (p: any): Production => ({
@@ -33,7 +34,7 @@ const mapProduction = (p: any): Production => ({
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
   lang, onLogout, productions, onAddProduction, onInvite, onUpdateProduction, onViewFeedback, onDownloadReport,
-  onRefresh, dbError: externalDbError
+  onRefresh, dbError: externalDbError, isInitialLoading = false
 }) => {
   const t = TRANSLATIONS[lang];
   const [activeTab, setActiveTab] = useState<'productions' | 'requests'>('productions');

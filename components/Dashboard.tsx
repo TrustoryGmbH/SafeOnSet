@@ -7,7 +7,8 @@ import Smiley from './Smiley';
 import { generatePosterPDF } from '../services/pdfGenerator';
 import { 
   Mail, FileText, Inbox, BarChart2, TrendingUp, AlertCircle, CheckCircle, 
-  AlertTriangle, X, Filter, Check, ShieldCheck, MessageSquare, ChevronDown, ChevronUp, Clock
+  AlertTriangle, X, Filter, Check, ShieldCheck, MessageSquare, ChevronDown, ChevronUp, Clock,
+  Plus, Trash2, Brain, ShieldAlert, Activity, Sparkles
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
@@ -114,17 +115,147 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [activePopup, setActivePopup] = useState<'none' | 'pdf'>('none');
 
   // Modals inside state
-  const [activeModal, setActiveModal] = useState<'none' | 'inbox' | 'history'>('none');
+  const [activeModal, setActiveModal] = useState<'none' | 'inbox' | 'history' | 'schedule'>('none');
   const [inboxFilter, setInboxFilter] = useState<'all' | 'open' | 'resolved'>('all');
   const [showOnlyNegative, setShowOnlyNegative] = useState<boolean>(true); // Startet direkt mit Fokus auf negative Feedbacks wie gewünscht
   
   // Local synchronized message list for responsive resolve state adjustment
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+  
+  // Schedule state hooks
+  const [localSchedule, setLocalSchedule] = useState<any[]>([]);
+  const [newDayNum, setNewDayNum] = useState<string>('');
+  const [newDayDate, setNewDayDate] = useState<string>('');
+  const [schedError, setSchedError] = useState<string | null>(null);
+  const [midTab, setMidTab] = useState<'trend' | 'ai-advisor' | 'heatmap'>('trend');
 
   useEffect(() => {
     setLocalMessages(messages);
   }, [messages]);
+
+  useEffect(() => {
+    setLocalSchedule(schedule);
+  }, [schedule]);
+
+  const handleAddShootDay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDayNum || !newDayDate) return;
+    setSchedError(null);
+
+    const dayVal = parseInt(newDayNum);
+    if (isNaN(dayVal)) {
+      setSchedError("Ungültige Tag-Nummer");
+      return;
+    }
+
+    const newDayObj: any = {
+      production_id: productionId,
+      date: newDayDate,
+      day: dayVal,
+      active: false
+    };
+
+    // Optimistic local update
+    const tempId = Math.random().toString();
+    const optimisticDay = { ...newDayObj, id: tempId };
+    setLocalSchedule(prev => [...prev, optimisticDay].sort((a,b) => a.day - b.day));
+
+    if (!isSandboxMode) {
+      try {
+        const { data, error } = await supabase
+          .from('shoot_days')
+          .insert([newDayObj])
+          .select();
+
+        if (error) {
+          if (error.message.includes('column') || error.message.includes('not find') || error.message.includes('does not exist')) {
+            setSchedError("Datenbank-Spalte 'production_id' fehlt in 'shoot_days'. Bitte wende dich an den Admin, um die Tabelle zu erweitern (ALTER TABLE shoot_days ADD COLUMN production_id UUID;).");
+          } else {
+            throw error;
+          }
+          // Revert optimistic update
+          setLocalSchedule(prev => prev.filter(s => s.id !== tempId));
+        } else if (data && data[0]) {
+          // Replace tempId with actual db entry
+          setLocalSchedule(prev => prev.map(s => s.id === tempId ? data[0] : s).sort((a,b) => a.day - b.day));
+        }
+      } catch (err: any) {
+        console.error("Fehler beim Hinzufügen des Drehtags:", err);
+        setSchedError(err.message || "Fehler beim Speichern");
+        setLocalSchedule(prev => prev.filter(s => s.id !== tempId));
+      }
+    }
+
+    setNewDayNum('');
+    setNewDayDate('');
+  };
+
+  const handleToggleActiveDay = async (dayId: string, currentActive: boolean) => {
+    setSchedError(null);
+    const nextActive = !currentActive;
+
+    // Optimistic local update: only ONE day can be active at a time!
+    setLocalSchedule(prev => prev.map(s => {
+      if (s.id === dayId) return { ...s, active: nextActive };
+      return { ...s, active: false }; // deactivate others
+    }));
+
+    if (!isSandboxMode) {
+      try {
+        // 1. Deactivate all days for this production
+        await supabase
+          .from('shoot_days')
+          .update({ active: false })
+          .eq('production_id', productionId);
+
+        // 2. Activate/Deactivate this specific day
+        const { error } = await supabase
+          .from('shoot_days')
+          .update({ active: nextActive })
+          .eq('id', dayId);
+
+        if (error) {
+          if (error.message.includes('active') || error.message.includes('not find') || error.message.includes('does not exist')) {
+            setSchedError("Spalte 'active' in 'shoot_days' fehlt. Bitte wende dich an den Admin, um die Tabelle zu erweitern.");
+          } else {
+            throw error;
+          }
+          // Revert
+          setLocalSchedule(schedule);
+        }
+      } catch (err: any) {
+        console.error("Fehler beim Ändern des Drehtag-Status:", err);
+        setSchedError(err.message || "Fehler beim Speichern");
+        // Revert
+        setLocalSchedule(schedule);
+      }
+    }
+  };
+
+  const handleDeleteShootDay = async (dayId: string) => {
+    if (!confirm(lang === 'de' ? "Diesen Drehtag wirklich löschen?" : "Delete this shoot day?")) return;
+    setSchedError(null);
+
+    // Optimistic local update
+    setLocalSchedule(prev => prev.filter(s => s.id !== dayId));
+
+    if (!isSandboxMode) {
+      try {
+        const { error } = await supabase
+          .from('shoot_days')
+          .delete()
+          .eq('id', dayId);
+
+        if (error) throw error;
+      } catch (err: any) {
+        console.error("Fehler beim Löschen des Drehtags:", err);
+        setSchedError(err.message || "Fehler beim Löschen");
+        // Revert
+        setLocalSchedule(schedule);
+      }
+    }
+  };
 
   useEffect(() => {
     if (qrRef.current) {
@@ -238,6 +369,114 @@ const Dashboard: React.FC<DashboardProps> = ({
     }));
   };
 
+  // --- AI SAFETY ADVISORY CALCULATIONS ---
+  const activeUnresolvedIncidents = localMessages.filter(m => m.score > 0 && !m.resolved);
+  
+  // Risk assessment Level
+  let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+  if (activeUnresolvedIncidents.length >= 4) riskLevel = 'HIGH';
+  else if (activeUnresolvedIncidents.length >= 1) riskLevel = 'MEDIUM';
+  
+  // Satisfaction Score
+  const satisfactionIndex = localMessages.length === 0 
+    ? 100 
+    : Math.round(((localMessages.filter(m => m.score === 0).length) / localMessages.length) * 100);
+
+  // Parse keywords and assemble recommendations
+  const getAIRecommendations = (): string[] => {
+    const recs: string[] = [];
+    const textCorpus = localMessages.map(m => m.text?.toLowerCase() || '').join(' ');
+
+    const keywordMapping = [
+      {
+        keys: ['überstunde', 'müde', 'schlaf', 'fatigue', 'tired', 'pause', 'break', 'überarbeitet'],
+        de: "Erhöhtes Risiko für Konzentrationsschwächen gemeldet. Bitte verlängerte Ruhezeiten zwischen den Drehtagen einplanen und zusätzliche Kaffeepausen einlegen.",
+        en: "Increased risk of concentration fatigue reported. Please plan extended rest periods between shoot days and schedule additional set breaks."
+      },
+      {
+        keys: ['staub', 'atmen', 'maske', 'dust', 'breathing', 'ffp2', 'schmutz'],
+        de: "Feinstaubbelastung oder Atembeschwerden gemeldet. Bitte FFP2-Masken am Set bereitstellen und für regelmäßige Lüftungsintervalle in Innenräumen sorgen.",
+        en: "Fine dust exposure or respiratory discomfort reported. Please supply FFP2/N95 masks on set and implement strict room ventilation cycles."
+      },
+      {
+        keys: ['kabel', 'stolpern', 'tripping', 'cables', 'verlegung', 'safety matten'],
+        de: "Physische Stolpergefahren durch Kabel gemeldet. Bitte die Grip- und Lichtabteilungen anweisen, alle Verkehrswege mit gelben Sicherheitsmatten abzudecken.",
+        en: "Physical tripping hazards reported. Please direct grip and electric departments to secure all high-traffic cable routes with yellow hazard covers."
+      },
+      {
+        keys: ['stunt', 'höhe', 'height', 'absturz', 'fall', 'leiter', 'ladder'],
+        de: "Sicherheitsrisiko bei Präzisions- oder Höhenarbeiten gemeldet. Bitte vor dem nächsten Take eine Sicherheitsunterweisung durch den Stunt-Koordinator durchführen.",
+        en: "Safety risk during precision or high-elevation setups reported. Please hold a dedicated safety briefing with the stunt coordinator before the next take."
+      },
+      {
+        keys: ['essen', 'wasser', 'catering', 'food', 'water', 'durst', 'hunger'],
+        de: "Beschwerden bezüglich Catering oder Dehydration. Bitte ausreichend kühle Wasserflaschen direkt am Set platzieren und Snack-Intervalle anpassen.",
+        en: "Complaints regarding catering or hydration. Please place adequate cold water stations directly on set and adjust nutrition break durations."
+      }
+    ];
+
+    keywordMapping.forEach(mapping => {
+      if (mapping.keys.some(key => textCorpus.includes(key))) {
+        recs.push(lang === 'de' ? mapping.de : mapping.en);
+      }
+    });
+
+    // Default suggestions if no keywords hit
+    if (recs.length === 0) {
+      if (riskLevel === 'LOW') {
+        recs.push(
+          lang === 'de' 
+            ? "Alle Sicherheitsindikatoren sind im grünen Bereich. Fahren Sie mit den standardmäßigen täglichen Sicherheits-Briefings fort." 
+            : "All safety indicators are nominal. Continue with standard daily safety brief check-ins."
+        );
+      } else {
+        recs.push(
+          lang === 'de' 
+            ? "Unaufgelöste Vorfälle vorhanden. Bitte kontaktieren Sie die betroffenen Departments, um Gefahrenquellen zeitnah zu entschärfen." 
+            : "Unresolved incidents present. Please interface with the affected departments to mitigate risk vectors promptly."
+        );
+      }
+    }
+
+    return recs;
+  };
+
+  const aiRecommendations = getAIRecommendations();
+
+  // --- DEPARTMENT HEATMAP CALCULATIONS ---
+  const DEPARTMENTS_LIST = [
+    { key: 'camera', label: lang === 'de' ? 'Kamera / Grip' : 'Camera / Grip', icon: '🎥' },
+    { key: 'lighting', label: lang === 'de' ? 'Licht / Elektrik' : 'Lighting / Electric', icon: '💡' },
+    { key: 'sound', label: lang === 'de' ? 'Ton / Sound' : 'Sound / Audio', icon: '🎤' },
+    { key: 'production', label: lang === 'de' ? 'Aufnahmeleitung' : 'Production Office', icon: '🎬' },
+    { key: 'catering', label: lang === 'de' ? 'Set-Catering' : 'Set Catering', icon: '🍲' },
+    { key: 'costume', label: lang === 'de' ? 'Kostüm & Maske' : 'Costume & Makeup', icon: '💄' },
+    { key: 'design', label: lang === 'de' ? 'Szenenbild / Requisite' : 'Art Dept / Props', icon: '📐' }
+  ];
+
+  const getDepartmentStats = () => {
+    return DEPARTMENTS_LIST.map(dept => {
+      const deptMsgs = localMessages.filter(m => {
+        const dName = (m.department || '').toLowerCase();
+        return dName === dept.key || dName.includes(dept.key) || dName === dept.label.toLowerCase() || dName.includes(dept.label.toLowerCase().split(' ')[0]);
+      });
+
+      const total = deptMsgs.length;
+      const unresolvedNegatives = deptMsgs.filter(m => m.score > 0 && !m.resolved).length;
+      
+      const health = total === 0 ? 100 : Math.max(20, 100 - (unresolvedNegatives * 30));
+
+      return {
+        ...dept,
+        total,
+        unresolvedNegatives,
+        health
+      };
+    });
+  };
+
+  const departmentStats = getDepartmentStats();
+
   return (
     <div className={`w-full max-w-6xl mx-auto bg-[#111827]/40 backdrop-blur-xl border border-white/5 rounded-[32px] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] min-h-[550px] ${lang === 'ar' ? 'font-tajawal' : 'font-sans'}`} dir={t.dir}>
       
@@ -262,50 +501,231 @@ const Dashboard: React.FC<DashboardProps> = ({
            <p className="text-[11px] text-slate-500 leading-relaxed">{explanation.text}</p>
         </div>
       </div>
-
-      {/* Middle: Trend History */}
-      <div className="flex flex-col border-r border-white/5">
-        <div className="p-8 flex-1">
-          <div className="flex items-center gap-2 mb-10">
-            <TrendingUp size={14} className="text-slate-500" />
-            <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.hTrend}</span>
+      {/* Middle: Premium Multi-Tab Workspace */}
+      <div className="flex flex-col border-r border-white/5 bg-slate-950/15">
+        
+        {/* Workspace Tab Headers */}
+        <div className="border-b border-white/5 flex p-4 justify-between items-center bg-black/10">
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setMidTab('trend')}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                midTab === 'trend' 
+                  ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20' 
+                  : 'text-slate-500 hover:text-slate-300 border border-transparent'
+              }`}
+            >
+              <TrendingUp size={12} />
+              {lang === 'de' ? 'Drehplan Trend' : 'Shoot Trend'}
+            </button>
+            
+            <button 
+              onClick={() => setMidTab('ai-advisor')}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 relative ${
+                midTab === 'ai-advisor' 
+                  ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' 
+                  : 'text-slate-500 hover:text-slate-300 border border-transparent'
+              }`}
+            >
+              <Brain size={12} />
+              AI Advisor
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full animate-ping" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border border-indigo-400" />
+            </button>
+            
+            <button 
+              onClick={() => setMidTab('heatmap')}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                midTab === 'heatmap' 
+                  ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20' 
+                  : 'text-slate-500 hover:text-slate-300 border border-transparent'
+              }`}
+            >
+              <Activity size={12} />
+              {lang === 'de' ? 'Heatmap' : 'Heatmap'}
+            </button>
           </div>
           
-          <div className="space-y-6 overflow-y-auto max-h-[420px] pr-2 custom-scrollbar">
-            {trendDays.map((day, idx) => (
-              <div key={idx} className="flex items-center gap-4 group">
-                <span className={`text-xs font-bold w-16 transition-colors ${idx === 0 ? 'text-white' : 'text-slate-500 group-hover:text-slate-400'}`}>{day.label}</span>
-                <div className="flex-1 h-2 bg-slate-800/50 rounded-full overflow-hidden border border-white/5 relative">
-                  <div 
-                    className="h-full rounded-full transition-all duration-700 ease-out" 
-                    style={{ width: `${day.score}%`, backgroundColor: getColor(day.score) }}
-                  ></div>
-                </div>
-                <span className="text-[10px] font-black text-slate-400 w-10 text-right tracking-tighter">{day.score}%</span>
-              </div>
-            ))}
+          <div className="flex items-center gap-1 bg-white/5 border border-white/5 rounded-full px-2 py-0.5">
+             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+             <span className="text-[8px] font-bold text-slate-400 tracking-widest uppercase">Live</span>
           </div>
         </div>
 
-        <div className="p-6 border-t border-white/5 grid grid-cols-2 gap-4 bg-black/10">
+        <div className="p-8 flex-1 overflow-hidden flex flex-col justify-between">
+          
+          {midTab === 'trend' && (
+            <div className="flex-1 flex flex-col justify-between animate-in fade-in slide-in-from-left-4 duration-300">
+              <div className="flex items-center gap-2 mb-8">
+                <TrendingUp size={14} className="text-slate-500" />
+                <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.hTrend}</span>
+              </div>
+              
+              <div className="space-y-5 overflow-y-auto max-h-[380px] pr-2 custom-scrollbar flex-1">
+                {trendDays.map((day, idx) => (
+                  <div key={idx} className="flex items-center gap-4 group">
+                    <span className={`text-xs font-bold w-16 transition-colors ${idx === 0 ? 'text-white' : 'text-slate-500 group-hover:text-slate-400'}`}>{day.label}</span>
+                    <div className="flex-1 h-2 bg-slate-800/50 rounded-full overflow-hidden border border-white/5 relative">
+                      <div 
+                        className="h-full rounded-full transition-all duration-700 ease-out" 
+                        style={{ width: `${day.score}%`, backgroundColor: getColor(day.score) }}
+                      ></div>
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 w-10 text-right tracking-tighter">{day.score}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {midTab === 'ai-advisor' && (
+            <div className="flex-1 flex flex-col justify-between animate-in fade-in slide-in-from-right-4 duration-300">
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Brain size={14} className="text-indigo-400" />
+                    <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">AI Set Risk Advisory</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                     <Sparkles size={10} /> Smart Scan
+                  </div>
+                </div>
+
+                {/* Dashboard Metrics Grid */}
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    riskLevel === 'LOW' 
+                      ? 'bg-emerald-950/10 border-emerald-500/10' 
+                      : riskLevel === 'MEDIUM'
+                        ? 'bg-amber-950/10 border-amber-500/10'
+                        : 'bg-rose-950/10 border-rose-500/10 shadow-[0_0_15px_rgba(239,68,68,0.05)]'
+                  }`}>
+                    <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Set Risk Level</span>
+                    <span className={`text-sm font-black uppercase tracking-wider ${
+                      riskLevel === 'LOW' ? 'text-emerald-400' : riskLevel === 'MEDIUM' ? 'text-amber-400' : 'text-rose-400'
+                    }`}>
+                      {riskLevel === 'LOW' 
+                        ? (lang === 'de' ? 'Gering' : 'Low') 
+                        : riskLevel === 'MEDIUM' 
+                          ? (lang === 'de' ? 'Erhöht' : 'Medium') 
+                          : (lang === 'de' ? 'Kritisch' : 'Critical')
+                      }
+                    </span>
+                  </div>
+                  
+                  <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                    <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Set Satisfaction</span>
+                    <span className="text-sm font-black text-white tracking-wider">{satisfactionIndex}%</span>
+                  </div>
+                </div>
+
+                {/* Smart recommendations */}
+                <div className="space-y-3 flex-1 overflow-y-auto max-h-[220px] custom-scrollbar pr-2">
+                   <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest">Active Safe Recommendations</span>
+                   
+                   {aiRecommendations.map((rec, i) => (
+                      <div key={i} className="p-4 bg-indigo-950/5 border border-indigo-500/10 rounded-2xl flex gap-3 text-left">
+                         <div className="p-1.5 bg-indigo-500/10 rounded-xl h-fit border border-indigo-500/20 text-indigo-400">
+                            <ShieldAlert size={14} />
+                         </div>
+                         <div>
+                            <h4 className="text-[10px] font-black uppercase tracking-wider text-indigo-300">Safety recommendation</h4>
+                            <p className="text-[11px] text-slate-400 leading-relaxed mt-1 font-medium">{rec}</p>
+                         </div>
+                      </div>
+                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {midTab === 'heatmap' && (
+            <div className="flex-1 flex flex-col justify-between animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="flex items-center gap-2 mb-6">
+                <Activity size={14} className="text-emerald-400" />
+                <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{lang === 'de' ? 'Crew-Departments Auslastung' : 'Department Safety Scores'}</span>
+              </div>
+
+              <div className="space-y-3.5 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar flex-1">
+                 {departmentStats.map((dept, i) => (
+                    <div 
+                      key={i} 
+                      className={`p-3 rounded-2xl border transition-all ${
+                        dept.health < 80 
+                          ? 'bg-rose-950/5 border-rose-500/10 shadow-[0_0_10px_rgba(239,68,68,0.02)]' 
+                          : 'bg-white/[0.01] border-white/5 hover:border-white/10'
+                      }`}
+                    >
+                       <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                             <span className="text-xs">{dept.icon}</span>
+                             <span className="text-xs font-bold text-slate-200">{dept.label}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                             {dept.unresolvedNegatives > 0 && (
+                               <span className="px-2 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[8px] font-black uppercase rounded-lg">
+                                  {dept.unresolvedNegatives} Open
+                               </span>
+                             )}
+                             <span className="text-[10px] font-black text-slate-400">{dept.health}%</span>
+                          </div>
+                       </div>
+                       
+                       <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden border border-white/5 relative">
+                          <div 
+                            className="h-full rounded-full transition-all duration-500" 
+                            style={{ 
+                              width: `${dept.health}%`, 
+                              backgroundColor: dept.health >= 90 
+                                ? '#10b981' 
+                                : dept.health >= 70 
+                                  ? '#f59e0b' 
+                                  : '#ef4444' 
+                            }}
+                          />
+                       </div>
+                    </div>
+                 ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        <div className="p-6 border-t border-white/5 grid grid-cols-3 gap-3 bg-black/10">
            <button 
              onClick={() => { onOpenInbox(); setActiveModal('inbox'); }} 
-             className="h-14 bg-slate-800/50 hover:bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center gap-3 text-sm font-bold transition-all group"
+             className="h-14 bg-slate-800/50 hover:bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all group"
            >
-             <Inbox size={18} className="text-slate-400 group-hover:text-rose-400" />
-             {t.inbox}
+             <Inbox size={16} className="text-slate-400 group-hover:text-rose-400" />
+             <span className="hidden sm:inline">{t.inbox}</span>
+             <span className="sm:hidden">Inbox</span>
              {localMessages.filter(m => m.score > 0 && !m.resolved).length > 0 && (
-               <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse">
+               <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">
                  {localMessages.filter(m => m.score > 0 && !m.resolved).length}
                </span>
              )}
            </button>
            <button 
              onClick={() => { onOpenHistory(); setActiveModal('history'); }} 
-             className="h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center gap-3 text-sm font-bold transition-all shadow-lg shadow-blue-900/20"
+             className="h-14 bg-slate-800/50 hover:bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all group"
            >
-             <BarChart2 size={18} />
-             {t.viewStats}
+             <BarChart2 size={16} className="text-slate-400 group-hover:text-blue-400" />
+             <span className="hidden sm:inline">{t.viewStats}</span>
+             <span className="sm:hidden">Stats</span>
+           </button>
+           <button 
+             onClick={() => setActiveModal('schedule')} 
+             className="h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-900/25 group"
+           >
+             <Clock size={16} className="text-blue-200 group-hover:scale-110 transition-transform" />
+             <span className="hidden sm:inline">{lang === 'de' ? 'Drehtage' : 'Schedule'}</span>
+             <span className="sm:hidden">Planer</span>
+             {localSchedule.filter(s => s.active).length > 0 && (
+               <span className="bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black">
+                 {localSchedule.find(s => s.active)?.day}
+               </span>
+             )}
            </button>
         </div>
       </div>
@@ -650,6 +1070,165 @@ const Dashboard: React.FC<DashboardProps> = ({
             {/* Modal Footer */}
             <div className="p-4 border-t border-white/5 bg-slate-950/20 text-center text-[10px] text-slate-500">
               Safe on Set • {lt.historyTitle}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ================= SCHEDULE / DREHTAGE MODAL ================= */}
+      {activeModal === 'schedule' && (
+        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 rounded-[24px] shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden text-left animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="p-6 border-b border-white/5 flex justify-between items-start bg-slate-950/20">
+              <div>
+                <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                  <Clock className="text-blue-400" size={20} />
+                  {lang === 'de' ? 'Drehtage- & Terminplaner' : 'Shoot Schedule Planner'}
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  {lang === 'de' 
+                    ? 'Verwalte Drehtage und steuere, an welchen Tagen Abstimmungen möglich sind.' 
+                    : 'Manage shoot days and control when active crew feedback is open.'}
+                </p>
+              </div>
+              <button 
+                onClick={() => { setActiveModal('none'); setSchedError(null); }}
+                className="p-1 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Error Banner */}
+            {schedError && (
+              <div className="p-4 bg-rose-500/10 border-b border-rose-500/20 text-rose-400 text-xs font-semibold leading-relaxed">
+                ⚠️ {schedError}
+                {schedError.includes('production_id') && (
+                  <div className="mt-2 p-2 bg-black/40 rounded text-[9px] font-mono text-slate-400 overflow-x-auto select-all">
+                    ALTER TABLE shoot_days <br />
+                    ADD COLUMN IF NOT EXISTS production_id UUID REFERENCES productions(id) ON DELETE CASCADE,<br />
+                    ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT false;
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              
+              {/* Add New Day Form */}
+              <form onSubmit={handleAddShootDay} className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                  <Plus size={14} /> {lang === 'de' ? 'Neuen Drehtag hinzufügen' : 'Add New Shoot Day'}
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{lang === 'de' ? 'Tag-Nummer' : 'Day Number'}</label>
+                    <input 
+                      type="number"
+                      required
+                      placeholder="z.B. 1"
+                      value={newDayNum}
+                      onChange={(e) => setNewDayNum(e.target.value)}
+                      className="bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-blue-500 transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{lang === 'de' ? 'Datum' : 'Date'}</label>
+                    <input 
+                      type="date"
+                      required
+                      value={newDayDate}
+                      onChange={(e) => setNewDayDate(e.target.value)}
+                      className="bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+                <button 
+                  type="submit" 
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md shadow-blue-900/20"
+                >
+                  {lang === 'de' ? 'Hinzufügen & Speichern' : 'Add Shoot Day'}
+                </button>
+              </form>
+
+              {/* Shoot Days List */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  {lang === 'de' ? 'Geplante Drehtage' : 'Scheduled Shoot Days'}
+                </h3>
+                
+                {localSchedule.length === 0 ? (
+                  <div className="text-center py-10 bg-white/[0.01] border border-dashed border-white/5 rounded-2xl text-slate-500 text-xs italic">
+                    {lang === 'de' ? 'Noch keine Drehtage geplant.' : 'No shoot days scheduled yet.'}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {localSchedule.map((day) => {
+                      const formattedDate = new Date(day.date).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+                        weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric'
+                      });
+
+                      return (
+                        <div 
+                          key={day.id}
+                          className={`p-4 rounded-xl border transition-all flex items-center justify-between ${
+                            day.active 
+                              ? 'bg-emerald-950/10 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.02)]' 
+                              : 'bg-white/5 border-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs uppercase ${
+                              day.active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-300'
+                            }`}>
+                              D{day.day}
+                            </div>
+                            <div>
+                              <span className="block font-bold text-sm text-white">{lang==='de'?'Drehtag':'Shoot Day'} {day.day}</span>
+                              <span className="text-[10px] text-slate-500 font-medium">{formattedDate}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => handleToggleActiveDay(day.id, !!day.active)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 border ${
+                                day.active 
+                                  ? 'bg-emerald-600 text-white border-emerald-500' 
+                                  : 'bg-slate-800 text-slate-400 border-white/5 hover:text-white hover:bg-slate-700'
+                              }`}
+                            >
+                              <CheckCircle size={12} />
+                              {day.active 
+                                ? (lang === 'de' ? 'Voting Geöffnet' : 'Voting Open')
+                                : (lang === 'de' ? 'Öffnen' : 'Open Voting')
+                              }
+                            </button>
+                            
+                            <button
+                              onClick={() => handleDeleteShootDay(day.id)}
+                              className="p-2 text-rose-500/40 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors border border-transparent hover:border-rose-500/10"
+                              title="Löschen"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-white/5 bg-slate-950/20 text-center text-[10px] text-slate-500">
+              Safe on Set • Drehtage- & Terminplaner
             </div>
 
           </div>

@@ -7,9 +7,10 @@ import MobileView from './components/MobileView';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import LandingPage from './components/LandingPage';
+import DashboardHub from './components/DashboardHub';
 import { supabase } from './services/supabase';
 import { generateFeedbackReportPDF } from './services/pdfGenerator';
-import { LogOut, WifiOff, Loader2, Beaker, AlertTriangle } from 'lucide-react';
+import { LogOut, WifiOff, Loader2, Beaker, AlertTriangle, ArrowLeft } from 'lucide-react';
 
 const mapProduction = (p: any): Production => ({
   id: p.id,
@@ -26,7 +27,7 @@ const mapProduction = (p: any): Production => ({
 
 function App() {
   const [lang, setLang] = useState<Language>('de');
-  const [view, setView] = useState<'landing' | 'login' | 'admin-login' | 'dashboard' | 'admin-dashboard' | 'mobile'>('landing');
+  const [view, setView] = useState<'landing' | 'login' | 'admin-login' | 'dashboard' | 'admin-dashboard' | 'mobile' | 'hub'>('landing');
   const [loginViewMode, setLoginViewMode] = useState<'login' | 'register'>('login');
   const [currentUser, setCurrentUser] = useState<string>(''); 
   const [isConnected, setIsConnected] = useState(false);
@@ -57,6 +58,55 @@ function App() {
         if (interval) clearInterval(interval);
     };
   }, [view]);
+
+  // Echtzeit-Updates über Supabase Realtime Channels
+  useEffect(() => {
+    if (isSandboxMode) return;
+
+    console.log("App: Initialisiere Supabase Realtime-Kanäle...");
+    
+    const channel = supabase.channel('realtime-safe-on-set')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+          console.log("Realtime: Nachricht empfangen:", payload);
+          if (payload.eventType === 'INSERT') {
+              const newMsg = payload.new as Message;
+              setMessages(prev => {
+                if (prev.some(m => m.id === newMsg.id || (m.date === newMsg.date && m.text === newMsg.text && m.score === newMsg.score))) return prev;
+                return [newMsg, ...prev];
+              });
+          } else if (payload.eventType === 'UPDATE') {
+              const updatedMsg = payload.new as Message;
+              setMessages(prev => prev.map(m => m.id === updatedMsg.id ? updatedMsg : m));
+          } else if (payload.eventType === 'DELETE') {
+              setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+          }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shoot_days' }, (payload) => {
+          console.log("Realtime: Drehtag empfangen:", payload);
+          if (payload.eventType === 'INSERT') {
+              const newDay = payload.new as ShootDay;
+              setSchedule(prev => {
+                if (prev.some(s => s.id === newDay.id)) return prev;
+                return [...prev, { ...newDay, day: parseInt(newDay.day as any) || newDay.day }].sort((a, b) => a.day - b.day);
+              });
+          } else if (payload.eventType === 'UPDATE') {
+              const updatedDay = payload.new as ShootDay;
+              setSchedule(prev => prev.map(s => s.id === updatedDay.id ? { ...updatedDay, day: parseInt(updatedDay.day as any) || updatedDay.day } : s).sort((a, b) => a.day - b.day));
+          } else if (payload.eventType === 'DELETE') {
+              setSchedule(prev => prev.filter(s => s.id !== payload.old.id));
+          }
+      })
+      .subscribe((status) => {
+          console.log("Realtime-Status:", status);
+          if (status === 'SUBSCRIBED') {
+              setIsConnected(true);
+          }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isSandboxMode]);
 
   useEffect(() => {
     initData();
@@ -161,9 +211,6 @@ function App() {
 
       const { data: msgs } = await supabase.from('messages').select('*').order('date', { ascending: false });
       setMessages(msgs || []);
-
-      const { data: sched } = await supabase.from('shoot_days').select('*');
-      setSchedule(sched && sched.length > 0 ? (sched as any[]).map(s => ({ ...s, day: parseInt(s.day) || s.day })) : INITIAL_SCHEDULE);
       
       setIsConnected(true);
     } catch (err: any) {
@@ -174,6 +221,52 @@ function App() {
       setIsInitialLoading(false);
     }
   };
+
+  // Load schedule dynamically when activeProductionId changes (with fallback)
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      if (!activeProductionId) {
+        // Fallback for initial view / no active production
+        try {
+          const { data: globalData } = await supabase.from('shoot_days').select('*');
+          setSchedule(globalData && globalData.length > 0 ? (globalData as any[]).map(s => ({ ...s, day: parseInt(s.day) || s.day })) : INITIAL_SCHEDULE);
+        } catch (e) {
+          setSchedule(INITIAL_SCHEDULE);
+        }
+        return;
+      }
+      
+      try {
+        console.log("Lade Drehtage für Produktion:", activeProductionId);
+        const { data, error } = await supabase
+          .from('shoot_days')
+          .select('*')
+          .eq('production_id', activeProductionId);
+          
+        if (error) {
+          // If the column doesn't exist, we'll get an error. Fallback to global fetch or default schedule
+          if (error.message.includes('column') || error.message.includes('not find') || error.message.includes('does not exist')) {
+            console.warn("Spalte 'production_id' fehlt in 'shoot_days'. Lade alle Tage als Fallback...");
+            const { data: globalData } = await supabase.from('shoot_days').select('*');
+            setSchedule(globalData && globalData.length > 0 ? (globalData as any[]).map(s => ({ ...s, day: parseInt(s.day) || s.day })) : INITIAL_SCHEDULE);
+          } else {
+            throw error;
+          }
+        } else {
+          setSchedule(data && data.length > 0 ? (data as any[]).map(s => ({ ...s, day: parseInt(s.day) || s.day })) : INITIAL_SCHEDULE);
+        }
+      } catch (err) {
+        console.error("Fehler beim Laden des Terminplans:", err);
+        setSchedule(INITIAL_SCHEDULE);
+      }
+    };
+
+    if (!isSandboxMode) {
+      fetchSchedule();
+    } else {
+      setSchedule(INITIAL_SCHEDULE);
+    }
+  }, [activeProductionId, isSandboxMode]);
 
   const [dbError, setDbError] = useState<string | null>(null);
   const [dbDiagnostic, setDbDiagnostic] = useState<string | null>(null);
@@ -233,7 +326,7 @@ function App() {
         setMessages([]); 
         setView('dashboard');
     } else {
-        setView('dashboard');
+        setView('hub');
     }
   };
 
@@ -432,7 +525,7 @@ function App() {
   
   const currentProduction = isSandboxMode 
     ? { id: 'test', name: 'Sandbox Project', coordinator: 'Tester', email: 'test@internal', status: 'Test' as const, created_at: new Date().toISOString() }
-    : productions.find(p => p.id === activeProductionId || p.email === currentUser || p.team?.some((m: any) => m.email === currentUser));
+    : (productions.find(p => p.id === activeProductionId) || productions.find(p => p.email?.toLowerCase() === currentUser?.toLowerCase() || p.team?.some((m: any) => m.email?.toLowerCase() === currentUser?.toLowerCase()) || p.co_admins?.some((ca: any) => ca.email?.toLowerCase() === currentUser?.toLowerCase())));
 
   if (isInitialLoading) {
     return (
@@ -501,6 +594,27 @@ function App() {
         expectedOTP={expectedOTP} 
         initialShowRegister={loginViewMode === 'register'}
         coAdminEmail={coAdminInfo?.email}
+      />
+    );
+
+  if (view === 'hub') return (
+    <DashboardHub 
+        lang={lang}
+        email={currentUser}
+        productions={productions}
+        onSelectProduction={(id) => {
+            setActiveProductionId(id);
+            setView('dashboard');
+        }}
+        onLogout={() => {
+            setCurrentUser('');
+            setView('landing');
+        }}
+        onRegisterClick={() => {
+            setLoginViewMode('register');
+            setView('login');
+        }}
+        messages={messages}
     />
   );
   
@@ -521,6 +635,7 @@ function App() {
           onDownloadReport={handleDownloadReport}
           onRefresh={initData}
           dbError={dbError || dbDiagnostic}
+          isInitialLoading={isInitialLoading}
       />
     );
   }
@@ -544,20 +659,36 @@ function App() {
             </span>
           </div>
         </div>
-        <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { 
-            if (isAdminReviewing && !isRestrictedCoAdmin) {
-                setView('admin-dashboard');
-                setIsAdminReviewing(false);
-            } else {
-                setIsSandboxMode(false); 
+        <div className="flex items-center gap-3">
+          {currentUser && !isAdminReviewing && (
+            <button 
+              className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all"
+              onClick={() => {
+                setIsSandboxMode(false);
                 setIsRestrictedCoAdmin(false);
                 setIsAdminReviewing(false);
-                setCurrentUser(''); 
-                setView('landing'); 
-            }
-        }}>
-          <LogOut size={14} />{(isAdminReviewing && !isRestrictedCoAdmin) ? 'Back to Admin' : t.logout}
-        </button>
+                setActiveProductionId(null);
+                setView('hub');
+              }}
+            >
+              <ArrowLeft size={14} /> {lang === 'de' ? 'Projekte' : 'Productions'}
+            </button>
+          )}
+          <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { 
+              if (isAdminReviewing && !isRestrictedCoAdmin) {
+                  setView('admin-dashboard');
+                  setIsAdminReviewing(false);
+              } else {
+                  setIsSandboxMode(false); 
+                  setIsRestrictedCoAdmin(false);
+                  setIsAdminReviewing(false);
+                  setCurrentUser(''); 
+                  setView('landing'); 
+              }
+          }}>
+            <LogOut size={14} />{(isAdminReviewing && !isRestrictedCoAdmin) ? 'Back to Admin' : t.logout}
+          </button>
+        </div>
       </header>
       <main className="flex-1 flex flex-col items-center justify-center px-8">
         {isSandboxMode && (
