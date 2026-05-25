@@ -8,24 +8,30 @@ import { Mail, ArrowRight, CheckCircle, Lock, ClipboardList, X, Shield, User, Bu
  * HILFSKOMPONENTEN (Außerhalb der Hauptkomponente definiert für stabiles Rendering)
  */
 
-const InputField = ({ label, icon: Icon, value, onChange, placeholder, required = true, type = "text", optionalLabel }: any) => (
-  <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-        {label} {!required && optionalLabel && <span className="opacity-40 font-medium">({optionalLabel})</span>}
-      </label>
-      <div className="relative">
-          <input 
-              required={required} 
-              type={type}
-              value={value} 
-              onChange={e => onChange(e.target.value)}
-              placeholder={placeholder}
-              className="w-full p-3.5 bg-slate-950/50 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-blue-500 transition-all pl-11"
-          />
-          <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-      </div>
-  </div>
-);
+let inputIdCounter = 0;
+const InputField = ({ label, icon: Icon, value, onChange, placeholder, required = true, type = "text", optionalLabel }: any) => {
+  const fieldId = `input-field-${label?.replace(/\s+/g, '-')?.toLowerCase() || (++inputIdCounter)}`;
+  return (
+    <div className="flex flex-col gap-1.5">
+        <label htmlFor={fieldId} className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+          {label} {!required && optionalLabel && <span className="opacity-40 font-medium">({optionalLabel})</span>}
+        </label>
+        <div className="relative">
+            <input 
+                id={fieldId}
+                required={required} 
+                type={type}
+                value={value} 
+                onChange={e => onChange(e.target.value)}
+                placeholder={placeholder}
+                aria-required={required}
+                className="w-full p-3.5 bg-slate-950/50 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all pl-11"
+            />
+            <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} aria-hidden="true" />
+        </div>
+    </div>
+  );
+};
 
 interface RegisterFormProps {
     t: any;
@@ -201,8 +207,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
       <div className={`w-full max-w-[420px] bg-slate-900/60 backdrop-blur-2xl p-10 rounded-[32px] shadow-2xl border ${isAdminMode ? 'border-purple-500/30' : 'border-white/10'} relative z-10`}>
         <div className="absolute top-6 right-6 flex bg-slate-950/50 p-1 rounded-full border border-white/5 backdrop-blur-md">
             {(['en', 'de', 'ar'] as Language[]).map((l) => (
-            <button key={l} onClick={() => setLang(l)} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${lang === l ? 'bg-white/10 text-white' : 'text-slate-500'}`}>
-                 <span className="text-xl">{l === 'en' ? '🇬🇧' : l === 'de' ? '🇩🇪' : '🇸🇦'}</span>
+            <button key={l} onClick={() => setLang(l)} aria-label={l === 'en' ? 'English' : l === 'de' ? 'Deutsch' : 'العربية'} aria-pressed={lang === l} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${lang === l ? 'bg-white/10 text-white' : 'text-slate-500'}`}>
+                 <span className="text-xl" aria-hidden="true">{l === 'en' ? '🇬🇧' : l === 'de' ? '🇩🇪' : '🇸🇦'}</span>
             </button>
             ))}
         </div>
@@ -218,10 +224,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
         {step === 'email' ? (
           <form onSubmit={handleSendCode} className="space-y-6">
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider ml-1">{isAdminMode ? 'Admin Account' : t.email}</label>
+              <label htmlFor="login-email" className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider ml-1">{isAdminMode ? 'Admin Account' : t.email}</label>
               <div className="relative group">
-                <input type="text" value={isAdminMode ? '••••••••••••••••' : email} onChange={(e) => !isAdminMode && setEmail(e.target.value)} placeholder={isAdminMode ? 'Protected Access' : t.email} className={`w-full py-4 pl-11 pr-4 ${isAdminMode ? 'bg-slate-950/30 text-slate-500 cursor-not-allowed' : 'bg-slate-950/50 text-white'} border border-white/10 rounded-2xl outline-none transition-all text-sm`} disabled={isAdminMode} autoFocus={!isAdminMode} />
-                {isAdminMode ? <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} /> : <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />}
+                <input id="login-email" type={isAdminMode ? 'text' : 'email'} value={isAdminMode ? '••••••••••••••••' : email} onChange={(e) => !isAdminMode && setEmail(e.target.value)} placeholder={isAdminMode ? 'Protected Access' : t.email} aria-label={isAdminMode ? 'Admin Login' : t.email} className={`w-full py-4 pl-11 pr-4 ${isAdminMode ? 'bg-slate-950/30 text-slate-500 cursor-not-allowed' : 'bg-slate-950/50 text-white'} border border-white/10 rounded-2xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm`} disabled={isAdminMode} autoFocus={!isAdminMode} />
+                {isAdminMode ? <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} aria-hidden="true" /> : <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} aria-hidden="true" />}
               </div>
             </div>
             <button type="submit" disabled={isLoading} className={`w-full h-14 ${isAdminMode ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/40' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/40'} text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wide`}>
@@ -245,8 +251,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
                 <span className="text-white font-black text-lg tracking-widest mt-1 block">{expectedOTP}</span>
               </div>
             )}
-            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="••••••" className="w-full py-4 text-center bg-slate-950/50 border border-white/10 rounded-2xl text-white text-2xl font-mono tracking-[0.5em] outline-none animate-in zoom-in-95 duration-200" maxLength={6} autoFocus />
-            {error && <p className="text-rose-400 text-xs text-center">{error}</p>}
+            <label htmlFor="otp-input" className="sr-only">{t.otpPlaceholder}</label>
+            <input id="otp-input" type="text" inputMode="numeric" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="••••••" aria-label={t.otpPlaceholder} aria-describedby={error ? 'otp-error' : undefined} className="w-full py-4 text-center bg-slate-950/50 border border-white/10 rounded-2xl text-white text-2xl font-mono tracking-[0.5em] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" maxLength={6} autoFocus />
+            {error && <p id="otp-error" role="alert" className="text-rose-400 text-xs text-center font-medium">{error}</p>}
             <button type="submit" className={`w-full h-14 ${isAdminMode ? 'bg-purple-600' : 'bg-blue-600'} text-white font-bold rounded-2xl shadow-lg transition-all text-sm uppercase tracking-wide`}>{t.verifyCode}</button>
             
             <button 

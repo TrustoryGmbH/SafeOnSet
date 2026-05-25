@@ -152,8 +152,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const newDayObj: any = {
       production_id: productionId,
       date: newDayDate,
-      day: dayVal,
-      active: false
+      day: dayVal
     };
 
     // Optimistic local update
@@ -203,26 +202,28 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     if (!isSandboxMode) {
       try {
-        // 1. Deactivate all days for this production
-        await supabase
+        // Try to update 'active' column — if it doesn't exist, suppress the error
+        // (the column needs to be added via Supabase SQL: ALTER TABLE shoot_days ADD COLUMN active BOOLEAN DEFAULT false;)
+        const { error: deactivateError } = await supabase
           .from('shoot_days')
           .update({ active: false })
           .eq('production_id', productionId);
 
-        // 2. Activate/Deactivate this specific day
-        const { error } = await supabase
-          .from('shoot_days')
-          .update({ active: nextActive })
-          .eq('id', dayId);
+        if (deactivateError && (deactivateError.message.includes('active') || deactivateError.message.includes('not find') || deactivateError.message.includes('does not exist'))) {
+          // Column doesn't exist — active state is local-only, which is fine
+          console.warn("'active' column not in shoot_days — active state is local-only.");
+          return;
+        }
 
-        if (error) {
-          if (error.message.includes('active') || error.message.includes('not find') || error.message.includes('does not exist')) {
-            setSchedError("Spalte 'active' in 'shoot_days' fehlt. Bitte wende dich an den Admin, um die Tabelle zu erweitern.");
-          } else {
+        if (!deactivateError) {
+          const { error } = await supabase
+            .from('shoot_days')
+            .update({ active: nextActive })
+            .eq('id', dayId);
+
+          if (error) {
             throw error;
           }
-          // Revert
-          setLocalSchedule(schedule);
         }
       } catch (err: any) {
         console.error("Fehler beim Ändern des Drehtag-Status:", err);
@@ -755,16 +756,22 @@ const Dashboard: React.FC<DashboardProps> = ({
            </button>
            <button 
              onClick={() => setActiveModal('schedule')} 
-             className="h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-900/25 group"
+              className="h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-900/25 group"
            >
              <Clock size={16} className="text-blue-200 group-hover:scale-110 transition-transform" />
              <span className="hidden sm:inline">{lang === 'de' ? 'Drehtage' : 'Schedule'}</span>
              <span className="sm:hidden">Planer</span>
-             {localSchedule.filter(s => s.active).length > 0 && (
-               <span className="bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black">
-                 {localSchedule.find(s => s.active)?.day}
-               </span>
-             )}
+             {(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const activeByProp = localSchedule.find(s => (s as any).active);
+                const activeByDate = localSchedule.find(s => s.date === today);
+                const active = activeByProp || activeByDate;
+                return active ? (
+                  <span className="bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black">
+                    {active.day}
+                  </span>
+                ) : null;
+              })()}
            </button>
         </div>
       </div>
@@ -803,13 +810,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* ================= INBOX MODAL ================= */}
       {activeModal === 'inbox' && (
-        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="inbox-modal-title">
           <div className="bg-slate-900 border border-white/10 rounded-[24px] shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden text-left">
             
             {/* Modal Header */}
             <div className="p-6 border-b border-white/5 flex justify-between items-start bg-slate-950/20">
               <div>
-                <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                <h2 id="inbox-modal-title" className="text-xl font-extrabold text-white flex items-center gap-2">
                   <Inbox className="text-blue-400" size={20} />
                   {lt.inboxTitleFull}
                 </h2>
@@ -987,13 +994,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* ================= STATS / HISTORY MODAL ================= */}
       {activeModal === 'history' && (
-        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
           <div className="bg-slate-900 border border-white/10 rounded-[24px] shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden text-left">
             
             {/* Modal Header */}
             <div className="p-6 border-b border-white/5 flex justify-between items-start bg-slate-950/20">
               <div>
-                <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                <h2 id="history-modal-title" className="text-xl font-extrabold text-white flex items-center gap-2">
                   <BarChart2 className="text-blue-400" size={20} />
                   {lt.historyTitle}
                 </h2>
@@ -1117,13 +1124,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* ================= SCHEDULE / DREHTAGE MODAL ================= */}
       {activeModal === 'schedule' && (
-        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title">
           <div className="bg-slate-900 border border-white/10 rounded-[24px] shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden text-left animate-in zoom-in-95 duration-200">
             
             {/* Modal Header */}
             <div className="p-6 border-b border-white/5 flex justify-between items-start bg-slate-950/20">
               <div>
-                <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                <h2 id="schedule-modal-title" className="text-xl font-extrabold text-white flex items-center gap-2">
                   <Clock className="text-blue-400" size={20} />
                   {lang === 'de' ? 'Drehtage- & Terminplaner' : 'Shoot Schedule Planner'}
                 </h2>

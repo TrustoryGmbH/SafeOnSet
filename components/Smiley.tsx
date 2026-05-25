@@ -26,8 +26,10 @@ const Smiley: React.FC<SmileyProps> = ({ score, size = 120, animate = false }) =
 
   const color = getColor(score);
 
+  const ariaLabel = score >= 90 ? 'Mood: Excellent' : score >= 60 ? 'Mood: Caution' : 'Mood: Critical';
+
   return (
-    <svg width={size} height={size} viewBox="0 0 120 120" className="flex-shrink-0 overflow-visible">
+    <svg width={size} height={size} viewBox="0 0 120 120" className="flex-shrink-0 overflow-visible" role="img" aria-label={ariaLabel}>
        {animate && (
          <>
             {/* Outer spinning ring */}

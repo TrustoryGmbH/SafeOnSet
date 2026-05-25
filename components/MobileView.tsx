@@ -27,13 +27,21 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
   const [hasAlreadyVoted, setHasAlreadyVoted] = useState(false);
 
   useEffect(() => {
-    // Find a day explicitly marked as active in schedule
-    let active = schedule.find(s => s.active);
+    // Strategy: Find today's active day using multiple fallbacks
+    const today = new Date().toISOString().split('T')[0];
     
-    // Fallback: if no day is explicitly active, check if today's date is in the schedule
+    // 1. Check for explicitly marked active day (from local state or UI toggle)
+    let active = schedule.find(s => (s as any).active === true);
+    
+    // 2. Fallback: Match today's date in the schedule
     if (!active) {
-      const today = new Date().toISOString().split('T')[0];
       active = schedule.find(s => s.date === today);
+    }
+    
+    // 3. Fallback: If schedule is empty or no match, create a synthetic "today" entry
+    //    This ensures crew members can always submit feedback
+    if (!active && schedule.length === 0) {
+      active = { day: 1, date: today };
     }
     
     setActiveDay(active || null);
@@ -135,8 +143,8 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
       
       {/* Sticky Header */}
       <div className="sticky top-0 z-20 flex justify-between items-center p-5 bg-[#0f172a]/80 backdrop-blur-md border-b border-white/5">
-        <button onClick={onBack} className="text-slate-400 hover:text-white transition-colors">
-           <ArrowLeft size={24} />
+        <button onClick={onBack} className="text-slate-400 hover:text-white transition-colors" aria-label={lang === 'de' ? 'Zurück' : 'Back'}>
+           <ArrowLeft size={24} aria-hidden="true" />
         </button>
         
         {productionName && (
@@ -146,14 +154,16 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
           </div>
         )}
 
-        <div className="flex gap-1 bg-white/5 p-1 rounded-full border border-white/5 backdrop-blur-sm">
+        <div className="flex gap-1 bg-white/5 p-1 rounded-full border border-white/5 backdrop-blur-sm" role="group" aria-label="Sprache">
            {(['en', 'de', 'ar'] as Language[]).map((l) => (
             <button
               key={l}
               onClick={() => setLang(l)}
+              aria-label={l === 'en' ? 'English' : l === 'de' ? 'Deutsch' : 'العربية'}
+              aria-pressed={lang === l}
               className={`text-2xl px-2 py-0.5 rounded-full transition-all ${lang === l ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              {l === 'en' ? '🇬🇧' : l === 'de' ? '🇩🇪' : '🇸🇦'}
+              <span aria-hidden="true">{l === 'en' ? '🇬🇧' : l === 'de' ? '🇩🇪' : '🇸🇦'}</span>
             </button>
           ))}
         </div>
@@ -184,9 +194,12 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
         <div className="w-full flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-8 duration-500">
             
             <div className="relative w-full">
+                <label htmlFor="dept-select" className="sr-only">{t.selectDept}</label>
                 <select 
+                    id="dept-select"
                     value={selectedDept}
                     onChange={(e) => setSelectedDept(e.target.value)}
+                    aria-label={t.selectDept}
                     className="w-full p-4 bg-slate-800/50 border border-white/10 rounded-2xl text-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none backdrop-blur-sm transition-colors hover:border-white/20"
                 >
                     <option value="" className="bg-slate-800">{t.selectDept}</option>
@@ -199,6 +212,7 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
 
             <button 
                 onClick={handlePositiveClick}
+                aria-label={t.btnPositive}
                 className="group relative w-full h-32 bg-gradient-to-br from-emerald-600 to-emerald-800 border border-emerald-500/30 rounded-3xl shadow-[0_0_30px_rgba(16,185,129,0.1)] active:scale-95 transition-all flex items-center justify-between overflow-hidden hover:shadow-[0_0_40px_rgba(16,185,129,0.2)] hover:border-emerald-400/50"
             >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-400/30 transition-all duration-500"></div>
@@ -214,6 +228,7 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
 
             <button 
                 onClick={handleNegativeClick}
+                aria-label={t.btnNegative}
                 className="group relative w-full h-32 bg-gradient-to-br from-rose-600 to-rose-900 border border-rose-500/30 rounded-3xl shadow-[0_0_30px_rgba(244,63,94,0.1)] active:scale-95 transition-all flex items-center justify-between overflow-hidden hover:shadow-[0_0_40px_rgba(244,63,94,0.2)] hover:border-rose-400/50"
             >
                  <div className="absolute top-0 right-0 w-32 h-32 bg-rose-400/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-rose-400/30 transition-all duration-500"></div>
@@ -245,26 +260,30 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
 
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-slate-400 font-bold mb-2 text-xs uppercase tracking-wide">{t.compTitle}</label>
+                            <label htmlFor="complaint-text" className="block text-slate-400 font-bold mb-2 text-xs uppercase tracking-wide">{t.compTitle}</label>
                             <textarea
-                                className="w-full p-4 bg-black/20 border border-white/10 rounded-xl focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 focus:outline-none text-white placeholder-slate-600 resize-none text-sm leading-relaxed"
+                                id="complaint-text"
+                                className="w-full p-4 bg-black/20 border border-white/10 rounded-xl focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500/50 focus:outline-none text-white placeholder-slate-600 resize-none text-sm leading-relaxed"
                                 rows={4}
                                 placeholder={t.compDesc}
                                 value={complaintText}
                                 onChange={(e) => setComplaintText(e.target.value)}
+                                aria-required="true"
                                 autoFocus
                             />
                         </div>
 
                         <div>
-                            <label className="block text-slate-400 font-bold mb-1 text-xs uppercase tracking-wide">{t.compContact}</label>
+                            <label htmlFor="complaint-contact" className="block text-slate-400 font-bold mb-1 text-xs uppercase tracking-wide">{t.compContact}</label>
                             <p className="text-[10px] text-slate-500 mb-2">{lang === 'de' ? 'Nur wenn du kontaktiert werden möchtest.' : lang === 'ar' ? 'فقط إذا كنت ترغب في أن يتم الاتصال بك.' : 'Only if you want to be contacted.'}</p>
                             <input
+                                id="complaint-contact"
                                 type="text"
-                                className="w-full p-4 bg-black/20 border border-white/10 rounded-xl focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 focus:outline-none text-white placeholder-slate-600 text-sm"
+                                className="w-full p-4 bg-black/20 border border-white/10 rounded-xl focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500/50 focus:outline-none text-white placeholder-slate-600 text-sm"
                                 placeholder={lang === 'de' ? 'Telefon / Email (freiwillig)' : lang === 'ar' ? 'هاتف / بريد إلكتروني (اختياري)' : 'Phone / Email (optional)'}
                                 value={complaintContact}
                                 onChange={(e) => setComplaintContact(e.target.value)}
+                                aria-required="false"
                             />
                         </div>
                     </div>

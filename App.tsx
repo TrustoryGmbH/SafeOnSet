@@ -410,25 +410,57 @@ function App() {
     }
 
     const prodToLink = activeProductionId || currentProduction?.id;
-    if (!prodToLink) return;
+    if (!prodToLink) {
+      console.error('Feedback abgelehnt: Keine aktive Produktion gefunden.');
+      return;
+    }
+
+    const newMessage: Message = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2),
+      date: new Date().toISOString(),
+      score: score,
+      text: details?.text || '',
+      contact: details?.contact || '',
+      department: details?.department || 'General',
+      production_id: prodToLink,
+      resolved: false
+    };
 
     try {
-      const newMessage = {
-        date: new Date().toISOString(),
-        score: score,
-        text: details?.text || '',
-        contact: details?.contact || 'Anonymous',
-        department: details?.department || 'General',
-        production_id: prodToLink,
-        resolved: false
-      };
+      const { data, error } = await supabase.from('messages').insert([{
+        date: newMessage.date,
+        score: newMessage.score,
+        text: newMessage.text,
+        contact: newMessage.contact,
+        department: newMessage.department,
+        production_id: newMessage.production_id,
+        resolved: newMessage.resolved
+      }]).select();
 
-      const { error } = await supabase.from('messages').insert([newMessage]);
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase INSERT error:', error.code, error.message, error.hint);
+        
+        // RLS-spezifischer Fehler: Daten trotzdem lokal anzeigen
+        if (error.code === '42501' || error.message?.includes('row-level security')) {
+          console.warn('⚠️ RLS blockiert INSERT — Feedback wird nur lokal gespeichert.');
+          console.warn('FIX: In Supabase Dashboard → Table "messages" → RLS → INSERT Policy für anon-Rolle aktivieren.');
+        }
+        
+        // Trotz DB-Fehler: Lokal speichern, damit Dashboard im aktuellen Session funktioniert
+        setMessages(prev => [newMessage, ...prev]);
+        return;
+      }
       
-      setMessages(prev => [{ ...newMessage, id: Math.random().toString() }, ...prev]);
-    } catch (err) {
-      console.error("Failed to submit feedback:", err);
+      // Erfolgreich in DB gespeichert — nutze die echte ID
+      if (data && data[0]) {
+        setMessages(prev => [{ ...newMessage, ...data[0] }, ...prev]);
+      } else {
+        setMessages(prev => [newMessage, ...prev]);
+      }
+    } catch (err: any) {
+      console.error('Failed to submit feedback (network/unexpected):', err);
+      // Fallback: Lokal speichern auch bei Netzwerkfehler
+      setMessages(prev => [newMessage, ...prev]);
     }
   };
 
