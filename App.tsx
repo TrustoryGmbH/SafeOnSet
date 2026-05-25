@@ -366,8 +366,38 @@ function App() {
 
   const handleRegisterAccess = async (payload: any) => {
     try {
+        // Try full insert first (with all columns)
         const { error } = await supabase.from('access_requests').insert([payload]);
-        if (error) throw error;
+        
+        if (error) {
+          // If columns are missing, fall back to only known-good columns
+          if (error.message?.includes('column') || error.message?.includes('not find') || error.code === 'PGRST204') {
+            console.warn('Full registration payload failed, using fallback columns:', error.message);
+            
+            // Fallback: Use only columns that definitely exist in the DB
+            const fallbackPayload = {
+              name: payload.name || payload.productionName || 'Neue Produktion',
+              email: payload.manager_email || payload.email || '',
+              first_name: payload.manager_name || '',
+              last_name: [
+                payload.coordinator_name ? `Coord: ${payload.coordinator_name}` : '',
+                payload.start_period ? `Zeitraum: ${payload.start_period}-${payload.end_period}` : '',
+                payload.phone ? `Tel: ${payload.phone}` : '',
+                payload.billing_address ? `Rechnung: ${payload.billing_address.substring(0, 80)}` : '',
+              ].filter(Boolean).join(' | '),
+              status: 'pending'
+            };
+            
+            const { error: fallbackError } = await supabase.from('access_requests').insert([fallbackPayload]);
+            if (fallbackError) {
+              console.error('Fallback registration also failed:', fallbackError);
+              throw fallbackError;
+            }
+            console.log('Registration saved with fallback schema.');
+          } else {
+            throw error;
+          }
+        }
     } catch (err: any) {
         console.error("Registration failed:", err);
     }

@@ -208,4 +208,5 @@ export interface Translation {
   approve: string;
   reject: string;
   testAccountInfo: string;
+  superAdminLogin: string;
 }

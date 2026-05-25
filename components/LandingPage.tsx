@@ -164,10 +164,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ lang, setLang, onLoginClick, 
                <a href="/datenschutz" onClick={(e) => { e.preventDefault(); setActiveModal('privacy'); }} className="hover:text-white transition-colors">Datenschutzerklärung</a>
                <a href="/agb" onClick={(e) => { e.preventDefault(); setActiveModal('terms'); }} className="hover:text-white transition-colors">AGB</a>
                <a href="/impressum" onClick={(e) => { e.preventDefault(); setActiveModal('imprint'); }} className="hover:text-white transition-colors">{t.imprTitle}</a>
-               {/* Admin Login hier platziert */}
+               {/* Super Admin Login – nur für Plattform-Admin */}
                <button onClick={onAdminLoginClick} className="flex items-center gap-1.5 text-slate-500 hover:text-purple-400 transition-colors">
                   <ShieldAlert size={12} aria-hidden="true" />
-                  {t.adminLogin}
+                  {t.superAdminLogin}
                </button>
           </nav>
           <p className="font-medium opacity-50">© 2026 Trustory GmbH. Alle Rechte vorbehalten.</p>
