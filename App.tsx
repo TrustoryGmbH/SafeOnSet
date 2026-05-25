@@ -834,11 +834,11 @@ function App() {
 
   return (
     <div className={`h-screen w-full bg-[#0f172a] text-white flex flex-col relative ${lang === 'ar' ? 'font-tajawal' : ''}`} dir={t.dir}>
-      <header className="h-[75px] border-b border-white/5 flex justify-between items-center px-10 bg-slate-900/50 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <div className="font-bold text-xl tracking-tight text-white">
-            Safe on Set <span className="opacity-20 mx-1">/</span> 
-            <span className="text-blue-400">{currentProduction?.name || 'Management'}</span>
+      <header className="h-[60px] md:h-[75px] border-b border-white/5 flex justify-between items-center px-4 md:px-10 bg-slate-900/50 backdrop-blur-md">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+          <div className="font-bold text-sm md:text-xl tracking-tight text-white truncate">
+            <span className="hidden sm:inline">Safe on Set</span><span className="sm:hidden">SoS</span> <span className="opacity-20 mx-0.5">/</span> 
+            <span className="text-blue-400 truncate">{currentProduction?.name || 'Management'}</span>
           </div>
           <div className={`flex items-center gap-1.5 px-3 py-1 ${isConnected ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} border rounded-full`}>
             {isConnected ? <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> : <WifiOff size={10} className="text-rose-500" />}
@@ -851,10 +851,10 @@ function App() {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
           {currentUser && !isAdminReviewing && (
             <button 
-              className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all"
+              className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-1.5 md:gap-2 bg-white/5 px-3 md:px-5 py-2 md:py-2.5 rounded-xl border border-white/5 transition-all"
               onClick={() => {
                 setIsSandboxMode(false);
                 setIsRestrictedCoAdmin(false);
@@ -864,10 +864,10 @@ function App() {
                 setView('hub');
               }}
             >
-              <ArrowLeft size={14} /> {lang === 'de' ? 'Projekte' : 'Productions'}
+              <ArrowLeft size={14} /> <span className="hidden sm:inline">{lang === 'de' ? 'Projekte' : 'Productions'}</span>
             </button>
           )}
-          <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { 
+          <button className="text-slate-400 hover:text-white text-[10px] font-black uppercase flex items-center gap-1.5 md:gap-2 bg-white/5 px-3 md:px-5 py-2 md:py-2.5 rounded-xl border border-white/5 transition-all" onClick={() => { 
               if (isAdminReviewing && !isRestrictedCoAdmin) {
                   setView('admin-dashboard');
                   setIsAdminReviewing(false);
@@ -880,10 +880,10 @@ function App() {
                   setView('landing'); 
               }
           }}>
-            <LogOut size={14} />{(isAdminReviewing && !isRestrictedCoAdmin) ? 'Back to Admin' : t.logout}
+            <LogOut size={14} /><span className="hidden sm:inline">{(isAdminReviewing && !isRestrictedCoAdmin) ? 'Back to Admin' : t.logout}</span>
           </button>
           {sessionTimeLeft !== null && (
-            <div className="text-[9px] text-slate-600 font-mono tabular-nums ml-1" title="Session läuft ab bei Inaktivität">
+            <div className="text-[9px] text-slate-600 font-mono tabular-nums hidden md:block" title="Session läuft ab bei Inaktivität">
               {Math.floor(sessionTimeLeft / 60000)}:{String(Math.floor((sessionTimeLeft % 60000) / 1000)).padStart(2, '0')}
             </div>
           )}
