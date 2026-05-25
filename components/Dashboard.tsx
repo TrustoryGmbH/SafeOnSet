@@ -8,7 +8,7 @@ import { generatePosterPDF } from '../services/pdfGenerator';
 import { 
   Mail, FileText, Inbox, BarChart2, TrendingUp, AlertCircle, CheckCircle, 
   AlertTriangle, X, Filter, Check, ShieldCheck, MessageSquare, ChevronDown, ChevronUp, Clock,
-  Plus, Trash2, Brain, ShieldAlert, Activity, Sparkles, Download
+  Plus, Trash2, Brain, ShieldAlert, Activity, Sparkles, Send
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
@@ -115,7 +115,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [activePopup, setActivePopup] = useState<'none' | 'pdf'>('none');
 
   // Modals inside state
-  const [activeModal, setActiveModal] = useState<'none' | 'inbox' | 'history' | 'schedule'>('none');
+  const [activeModal, setActiveModal] = useState<'none' | 'inbox' | 'history' | 'schedule' | 'email-send'>('none');
+  const [emailSendAddress, setEmailSendAddress] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
   const [inboxFilter, setInboxFilter] = useState<'all' | 'open' | 'resolved'>('all');
   const [showOnlyNegative, setShowOnlyNegative] = useState<boolean>(true); // Startet direkt mit Fokus auf negative Feedbacks wie gewünscht
   
@@ -732,7 +734,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
         </div>
 
-        <div className="p-6 border-t border-white/5 grid grid-cols-3 gap-3 bg-black/10">
+        <div className="p-6 border-t border-white/5 grid grid-cols-2 gap-3 bg-black/10">
            <button 
              onClick={() => { onOpenInbox(); setActiveModal('inbox'); }} 
              className="h-14 bg-slate-800/50 hover:bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all group"
@@ -754,27 +756,8 @@ const Dashboard: React.FC<DashboardProps> = ({
              <span className="hidden sm:inline">{t.viewStats}</span>
              <span className="sm:hidden">Stats</span>
            </button>
-           <button 
-             onClick={() => setActiveModal('schedule')} 
-              className="h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-900/25 group"
-           >
-             <Clock size={16} className="text-blue-200 group-hover:scale-110 transition-transform" />
-             <span className="hidden sm:inline">{lang === 'de' ? 'Drehtage' : 'Schedule'}</span>
-             <span className="sm:hidden">Planer</span>
-             {(() => {
-                const today = new Date().toISOString().split('T')[0];
-                const activeByProp = localSchedule.find(s => (s as any).active);
-                const activeByDate = localSchedule.find(s => s.date === today);
-                const active = activeByProp || activeByDate;
-                return active ? (
-                  <span className="bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black">
-                    {active.day}
-                  </span>
-                ) : null;
-              })()}
-           </button>
-        </div>
-      </div>
+         </div>
+       </div>
 
       {/* Right: Actions */}
       <div className="p-8 flex flex-col items-center">
@@ -787,7 +770,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="w-full mt-12 grid grid-cols-3 gap-3">
+        <div className="w-full mt-12 grid grid-cols-2 gap-3">
             <div className="relative">
               <button onClick={() => setActivePopup(activePopup === 'pdf' ? 'none' : 'pdf')} className="w-full h-12 bg-slate-800/50 border border-white/10 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-all">
                 <FileText size={16} className="text-slate-400" />
@@ -801,36 +784,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               )}
             </div>
-            <button onClick={onOpenEmail} className="h-12 bg-slate-800/50 border border-white/10 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-all">
-              <Mail size={16} className="text-slate-400" />
-              <span className="text-[8px] font-black uppercase tracking-widest">{t.email}</span>
-            </button>
-            <button onClick={() => {
-              // CSV Export
-              const rows = [['Datum', 'Uhrzeit', 'Typ', 'Score', 'Abteilung', 'Kommentar', 'Kontakt', 'Status'].join(';')];
-              localMessages.forEach(m => {
-                const d = new Date(m.date);
-                rows.push([
-                  d.toLocaleDateString('de-DE'),
-                  d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-                  m.score > 0 ? 'Negativ' : 'Positiv',
-                  String(m.score),
-                  m.department || '-',
-                  `"${(m.text || '').replace(/"/g, '""')}"`,
-                  m.contact || '-',
-                  m.resolved ? 'Erledigt' : 'Offen'
-                ].join(';'));
-              });
-              const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `feedback_${productionName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-              a.click();
-              URL.revokeObjectURL(url);
-            }} className="h-12 bg-emerald-600/20 border border-emerald-500/20 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-emerald-600/30 transition-all">
-              <Download size={16} className="text-emerald-400" />
-              <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400">CSV</span>
+            <button onClick={() => { setEmailSendAddress(''); setActiveModal('email-send'); }} className="h-12 bg-blue-600/20 border border-blue-500/20 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-blue-600/30 transition-all">
+              <Send size={16} className="text-blue-400" />
+              <span className="text-[8px] font-black uppercase tracking-widest text-blue-400">{lang === 'de' ? 'Versenden' : 'Send'}</span>
             </button>
         </div>
       </div>
@@ -1333,6 +1289,111 @@ const Dashboard: React.FC<DashboardProps> = ({
               Safe on Set • Drehtage- & Terminplaner
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ================= EMAIL SEND MODAL ================= */}
+      {activeModal === 'email-send' && (
+        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true">
+          <div className="bg-slate-900 border border-white/10 rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden">
+            
+            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-slate-950/20">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Send className="text-blue-400" size={18} />
+                  {lang === 'de' ? 'QR-Code & Poster versenden' : 'Send QR Code & Poster'}
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  {lang === 'de' ? 'An eine beliebige E-Mail-Adresse senden' : 'Send to any email address'}
+                </p>
+              </div>
+              <button onClick={() => setActiveModal('none')} className="p-1 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors font-bold text-sm">✕</button>
+            </div>
+
+            <div className="p-6">
+              <label htmlFor="send-email-input" className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                {lang === 'de' ? 'Empfänger E-Mail' : 'Recipient Email'}
+              </label>
+              <input
+                id="send-email-input"
+                type="email"
+                value={emailSendAddress}
+                onChange={(e) => setEmailSendAddress(e.target.value)}
+                placeholder="email@example.com"
+                className="w-full p-3.5 bg-black/20 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none text-white placeholder-slate-600 text-sm"
+                autoFocus
+              />
+
+              <div className="mt-4 p-3 bg-white/[0.03] border border-white/[0.05] rounded-xl">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">{lang === 'de' ? 'Inhalt der E-Mail' : 'Email contents'}</p>
+                <div className="flex items-center gap-2 text-xs text-slate-300 mb-1.5">
+                  <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center"><span className="text-[10px]">📱</span></div>
+                  {lang === 'de' ? 'QR-Code Link für die Produktion' : 'QR Code link for production'}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center"><span className="text-[10px]">📄</span></div>
+                  {lang === 'de' ? 'PDF Poster zum Ausdrucken' : 'PDF poster for printing'}
+                </div>
+              </div>
+
+              <button
+                disabled={emailSending || !emailSendAddress.includes('@')}
+                onClick={async () => {
+                  setEmailSending(true);
+                  const qrUrl = getQrUrl();
+                  try {
+                    await fetch('/.netlify/functions/send-email', {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        to: emailSendAddress,
+                        subject: `Safe on Set – QR-Code & Poster: ${productionName}`,
+                        html: `<div style="font-family: -apple-system, sans-serif; padding: 40px; text-align: center; background: #0f172a; color: white;">
+                          <h1 style="font-size: 24px; margin-bottom: 8px;">Safe on Set</h1>
+                          <p style="color: #94a3b8; margin-bottom: 32px;">${productionName}</p>
+                          <div style="background: white; border-radius: 16px; padding: 24px; display: inline-block; margin-bottom: 24px;">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}" width="200" height="200" alt="QR Code" style="display: block;" />
+                          </div>
+                          <p style="color: #64748b; font-size: 14px; margin-bottom: 24px;">Diesen QR-Code am Set aushängen. Crew-Mitglieder scannen ihn, um Feedback abzugeben.</p>
+                          <div style="margin-bottom: 16px;">
+                            <a href="${qrUrl}" style="background: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">QR-Code Link öffnen</a>
+                          </div>
+                          <p style="color: #334155; font-size: 11px; margin-top: 32px;">Tipp: Lade das PDF-Poster im Dashboard herunter (Button "PDF") und drucke es aus.</p>
+                          <p style="color: #1e293b; font-size: 10px; margin-top: 24px;">Safe on Set © 2026 • Trustory GmbH</p>
+                        </div>`
+                      })
+                    });
+                    alert(lang === 'de' ? `✅ E-Mail an ${emailSendAddress} gesendet!` : `✅ Email sent to ${emailSendAddress}!`);
+                    setActiveModal('none');
+                  } catch (err) {
+                    console.warn('Email send error:', err);
+                    // Fallback: Copy to clipboard
+                    try {
+                      await navigator.clipboard.writeText(qrUrl);
+                      alert(lang === 'de' 
+                        ? `E-Mail-Versand nicht verfügbar. QR-Link wurde in die Zwischenablage kopiert:\n${qrUrl}` 
+                        : `Email not available. QR link copied to clipboard:\n${qrUrl}`);
+                    } catch {
+                      alert(lang === 'de' ? `QR-Link: ${qrUrl}` : `QR Link: ${qrUrl}`);
+                    }
+                    setActiveModal('none');
+                  } finally {
+                    setEmailSending(false);
+                  }
+                }}
+                className={`w-full mt-5 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                  emailSending || !emailSendAddress.includes('@')
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white active:scale-[0.98]'
+                }`}
+              >
+                {emailSending ? (
+                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {lang === 'de' ? 'Wird gesendet...' : 'Sending...'}</>
+                ) : (
+                  <><Send size={16} /> {lang === 'de' ? 'Jetzt versenden' : 'Send now'}</>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
