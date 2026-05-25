@@ -9,6 +9,7 @@ export interface Message {
   score: number;
   department?: string;
   resolved?: boolean;
+  production_id?: string;
 }
 
 export interface ShootDay {

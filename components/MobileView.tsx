@@ -68,11 +68,11 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
   };
 
   const handleComplaintSubmit = () => {
-    if (complaintContact.length < 3 || !complaintText) {
-      alert(t.compContact + " required!");
+    if (!complaintText.trim()) {
+      alert(lang === 'de' ? 'Bitte beschreibe den Vorfall.' : lang === 'ar' ? 'يرجى وصف الحادثة.' : 'Please describe the incident.');
       return;
     }
-    onSubmit(100, { text: complaintText, contact: complaintContact, department: selectedDept || undefined });
+    onSubmit(100, { text: complaintText, contact: complaintContact || '', department: selectedDept || undefined });
     recordVote();
   };
 
@@ -257,11 +257,12 @@ const MobileView: React.FC<MobileViewProps> = ({ lang, setLang, onSubmit, onBack
                         </div>
 
                         <div>
-                            <label className="block text-slate-400 font-bold mb-2 text-xs uppercase tracking-wide">{t.compContact}</label>
+                            <label className="block text-slate-400 font-bold mb-1 text-xs uppercase tracking-wide">{t.compContact}</label>
+                            <p className="text-[10px] text-slate-500 mb-2">{lang === 'de' ? 'Nur wenn du kontaktiert werden möchtest.' : lang === 'ar' ? 'فقط إذا كنت ترغب في أن يتم الاتصال بك.' : 'Only if you want to be contacted.'}</p>
                             <input
                                 type="text"
                                 className="w-full p-4 bg-black/20 border border-white/10 rounded-xl focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 focus:outline-none text-white placeholder-slate-600 text-sm"
-                                placeholder="Phone / Email"
+                                placeholder={lang === 'de' ? 'Telefon / Email (freiwillig)' : lang === 'ar' ? 'هاتف / بريد إلكتروني (اختياري)' : 'Phone / Email (optional)'}
                                 value={complaintContact}
                                 onChange={(e) => setComplaintContact(e.target.value)}
                             />

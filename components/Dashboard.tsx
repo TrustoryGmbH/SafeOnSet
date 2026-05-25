@@ -309,33 +309,72 @@ const Dashboard: React.FC<DashboardProps> = ({
     return url.toString();
   };
 
-  // Generiere die Liste der Trend-Tage (max 10)
+  // Generiere die Liste der Trend-Tage – zeigt ALLE Tage mit Feedback-Daten + heute
   const getTrendDays = () => {
-    const days = [];
-    const maxDays = 10;
+    const todayDate = new Date();
+    const todayStr = todayDate.toISOString().split('T')[0];
     
-    // In echten Accounts: Wir zählen rückwärts, aber stoppen am Startdatum
-    const startLimit = productionStartDate ? new Date(productionStartDate) : new Date();
-    if (!productionStartDate && !isSandboxMode) {
-        if (localMessages.length > 0) {
-            const sortedMsgs = [...localMessages].sort((a,b) => a.date.localeCompare(b.date));
-            startLimit.setTime(new Date(sortedMsgs[0].date).getTime());
-        }
+    // Sammle alle einzigartigen Tage aus den Nachrichten
+    const messageDates = new Set<string>();
+    localMessages.forEach(m => {
+      if (m.date) {
+        const dateStr = m.date.split('T')[0];
+        messageDates.add(dateStr);
+      }
+    });
+    
+    // Bestimme den frühesten Tag
+    let earliestDate: Date;
+    if (productionStartDate) {
+      earliestDate = new Date(productionStartDate);
+    } else if (messageDates.size > 0) {
+      const sortedDates = [...messageDates].sort();
+      earliestDate = new Date(sortedDates[0]);
+    } else {
+      // Kein Start-Datum und keine Nachrichten: zeige die letzten 7 Tage
+      earliestDate = new Date(todayDate);
+      earliestDate.setDate(earliestDate.getDate() - 6);
     }
-
-    for (let i = 0; i < maxDays; i++) {
-        const d = new Date();
+    
+    // Sandbox: Zeige 10 Tage Demo-Daten rückwärts
+    if (isSandboxMode) {
+      const days = [];
+      for (let i = 0; i < 10; i++) {
+        const d = new Date(todayDate);
         d.setDate(d.getDate() - i);
         const ds = d.toISOString().split('T')[0];
-        
-        // Stopp-Logik für Real-Account
-        if (!isSandboxMode && d < startLimit && i > 0) break;
-
         days.push({
-            label: i === 0 ? t.today : `${d.getDate()}.${(d.getMonth() + 1).toString().padStart(2, '0')}.`,
-            date: ds,
-            score: calculateScoreForDate(ds)
+          label: i === 0 ? t.today : `${d.getDate()}.${(d.getMonth() + 1).toString().padStart(2, '0')}.`,
+          date: ds,
+          score: calculateScoreForDate(ds)
         });
+      }
+      return days;
+    }
+    
+    // Real: Zeige alle Tage von heute rückwärts bis zum frühesten Datum (max 60 Tage)
+    const days = [];
+    const maxDays = 60;
+    for (let i = 0; i < maxDays; i++) {
+      const d = new Date(todayDate);
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().split('T')[0];
+      
+      // Stoppe, wenn wir vor dem frühesten Datum sind
+      if (d < earliestDate && i > 0) break;
+      
+      // Zeige den Tag wenn: a) es heute ist, b) es Nachrichten gibt, c) es ein Produktions-Zeitraum-Tag ist
+      const hasFeedback = messageDates.has(ds);
+      const isToday = ds === todayStr;
+      const isInProductionRange = productionStartDate ? d >= earliestDate : true;
+      
+      if (isToday || hasFeedback || isInProductionRange) {
+        days.push({
+          label: isToday ? t.today : `${d.getDate()}.${(d.getMonth() + 1).toString().padStart(2, '0')}.`,
+          date: ds,
+          score: calculateScoreForDate(ds)
+        });
+      }
     }
     return days;
   };
@@ -1010,7 +1049,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           <span className="block font-bold text-sm text-white">{day.label}</span>
                           <span className="text-[10px] text-slate-400 uppercase tracking-wide">
                             {day.score === 100 
-                              ? <span className="text-emerald-400 font-bold flex items-center gap-1"><CheckCircle size={10} /> {lang==='en'?lt.allPositiveEn:lt.allPositive}</span>
+                              ? <span className="text-emerald-400 font-bold flex items-center gap-1"><CheckCircle size={10} /> {lt.allPositive}</span>
                               : <span className="text-amber-500 font-black">{dayNegs.length} {lt.incidentsReported}</span>
                             }
                           </span>
