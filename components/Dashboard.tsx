@@ -8,7 +8,7 @@ import { generatePosterPDF } from '../services/pdfGenerator';
 import { 
   Mail, FileText, Inbox, BarChart2, TrendingUp, AlertCircle, CheckCircle, 
   AlertTriangle, X, Filter, Check, ShieldCheck, MessageSquare, ChevronDown, ChevronUp, Clock,
-  Plus, Trash2, Brain, ShieldAlert, Activity, Sparkles
+  Plus, Trash2, Brain, ShieldAlert, Activity, Sparkles, Download
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
@@ -787,7 +787,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="w-full mt-12 grid grid-cols-2 gap-3">
+        <div className="w-full mt-12 grid grid-cols-3 gap-3">
             <div className="relative">
               <button onClick={() => setActivePopup(activePopup === 'pdf' ? 'none' : 'pdf')} className="w-full h-12 bg-slate-800/50 border border-white/10 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-all">
                 <FileText size={16} className="text-slate-400" />
@@ -805,8 +805,64 @@ const Dashboard: React.FC<DashboardProps> = ({
               <Mail size={16} className="text-slate-400" />
               <span className="text-[8px] font-black uppercase tracking-widest">{t.email}</span>
             </button>
+            <button onClick={() => {
+              // CSV Export
+              const rows = [['Datum', 'Uhrzeit', 'Typ', 'Score', 'Abteilung', 'Kommentar', 'Kontakt', 'Status'].join(';')];
+              localMessages.forEach(m => {
+                const d = new Date(m.date);
+                rows.push([
+                  d.toLocaleDateString('de-DE'),
+                  d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+                  m.score > 0 ? 'Negativ' : 'Positiv',
+                  String(m.score),
+                  m.department || '-',
+                  `"${(m.text || '').replace(/"/g, '""')}"`,
+                  m.contact || '-',
+                  m.resolved ? 'Erledigt' : 'Offen'
+                ].join(';'));
+              });
+              const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `feedback_${productionName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }} className="h-12 bg-emerald-600/20 border border-emerald-500/20 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-emerald-600/30 transition-all">
+              <Download size={16} className="text-emerald-400" />
+              <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400">CSV</span>
+            </button>
         </div>
       </div>
+
+      {/* ================= SMART TREND ALERT ================= */}
+      {(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayNegatives = localMessages.filter(m => m.score > 0 && m.date?.startsWith(today));
+        if (todayNegatives.length >= 3) {
+          return (
+            <div className="absolute bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom duration-300">
+              <div className="bg-rose-500/15 border border-rose-500/30 rounded-2xl p-4 flex items-center gap-4 backdrop-blur-md">
+                <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center flex-shrink-0 animate-pulse">
+                  <AlertTriangle size={20} className="text-rose-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-rose-300">
+                    {lang === 'de' ? `⚠️ Trend-Warnung: ${todayNegatives.length} negative Meldungen heute` : `⚠️ Trend Alert: ${todayNegatives.length} negative reports today`}
+                  </p>
+                  <p className="text-[10px] text-rose-400/80 mt-0.5">
+                    {lang === 'de' ? 'Erhöhte Aufmerksamkeit empfohlen. Prüfen Sie die Inbox.' : 'Elevated attention recommended. Check the inbox.'}
+                  </p>
+                </div>
+                <button onClick={() => { setActiveModal('inbox'); }} className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-xl text-xs font-bold text-rose-300 transition-all">
+                  Inbox
+                </button>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* ================= INBOX MODAL ================= */}
       {activeModal === 'inbox' && (

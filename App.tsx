@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TRANSLATIONS, INITIAL_SCHEDULE } from './constants';
 import { Language, Message, ShootDay, Production } from './types';
 import Dashboard from './components/Dashboard';
@@ -43,6 +43,131 @@ function App() {
   const [isRestrictedCoAdmin, setIsRestrictedCoAdmin] = useState(false);
   const [activeProductionId, setActiveProductionId] = useState<string | null>(null);
   const [coAdminInfo, setCoAdminInfo] = useState<{ prodId: string; userId: string; email: string } | null>(null);
+  const [sessionTimeLeft, setSessionTimeLeft] = useState<number | null>(null);
+
+  // ============================================
+  // SESSION PERSISTENCE + 5-MIN INACTIVITY LOGOUT
+  // ============================================
+  const SESSION_KEY = 'trustory_session';
+  const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 Minuten
+  const inactivityTimerRef = useRef<any>(null);
+  const countdownRef = useRef<any>(null);
+
+  const saveSession = useCallback((data: {
+    email: string; view: string; activeProductionId?: string | null;
+    isSandboxMode?: boolean; isAdminReviewing?: boolean; isRestrictedCoAdmin?: boolean;
+  }) => {
+    const session = { ...data, lastActivity: Date.now() };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  }, []);
+
+  const clearSession = useCallback(() => {
+    localStorage.removeItem(SESSION_KEY);
+    setSessionTimeLeft(null);
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+  }, []);
+
+  const performAutoLogout = useCallback(() => {
+    console.log('Session expired — auto logout.');
+    clearSession();
+    setCurrentUser('');
+    setActiveProductionId(null);
+    setIsSandboxMode(false);
+    setIsAdminReviewing(false);
+    setIsRestrictedCoAdmin(false);
+    setView('landing');
+  }, [clearSession]);
+
+  const resetInactivityTimer = useCallback(() => {
+    // Reset the 5-min timer
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+
+    // Update lastActivity in localStorage
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      try {
+        const session = JSON.parse(raw);
+        session.lastActivity = Date.now();
+        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      } catch { /* ignore */ }
+    }
+
+    setSessionTimeLeft(SESSION_TIMEOUT_MS);
+
+    // Countdown every second for UI display
+    countdownRef.current = setInterval(() => {
+      setSessionTimeLeft(prev => {
+        if (prev === null) return null;
+        const next = prev - 1000;
+        return next > 0 ? next : 0;
+      });
+    }, 1000);
+
+    // Auto-logout after 5 min
+    inactivityTimerRef.current = setTimeout(() => {
+      performAutoLogout();
+    }, SESSION_TIMEOUT_MS);
+  }, [performAutoLogout, SESSION_TIMEOUT_MS]);
+
+  // Listen for user activity events (only when logged in)
+  useEffect(() => {
+    const isLoggedIn = view === 'dashboard' || view === 'admin-dashboard' || view === 'hub';
+    if (!isLoggedIn) {
+      // Not logged in — clear timers
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      setSessionTimeLeft(null);
+      return;
+    }
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    let lastReset = 0;
+    const throttledReset = () => {
+      const now = Date.now();
+      if (now - lastReset > 10000) { // Only reset every 10 sec to avoid spam
+        lastReset = now;
+        resetInactivityTimer();
+      }
+    };
+
+    activityEvents.forEach(evt => window.addEventListener(evt, throttledReset, { passive: true }));
+    resetInactivityTimer(); // Initial start
+
+    return () => {
+      activityEvents.forEach(evt => window.removeEventListener(evt, throttledReset));
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [view, resetInactivityTimer]);
+
+  // Restore session on app load
+  useEffect(() => {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+
+    try {
+      const session = JSON.parse(raw);
+      const elapsed = Date.now() - (session.lastActivity || 0);
+
+      // Only restore if less than 5 minutes old
+      if (elapsed < SESSION_TIMEOUT_MS && session.email) {
+        console.log('Restoring session for:', session.email, 'view:', session.view);
+        setCurrentUser(session.email);
+        if (session.activeProductionId) setActiveProductionId(session.activeProductionId);
+        if (session.isSandboxMode) setIsSandboxMode(true);
+        if (session.isAdminReviewing) setIsAdminReviewing(true);
+        if (session.isRestrictedCoAdmin) setIsRestrictedCoAdmin(true);
+        setView(session.view || 'hub');
+      } else {
+        // Session expired
+        clearSession();
+      }
+    } catch {
+      clearSession();
+    }
+  }, []); // Only on mount
 
   // 10-Sekunden Polling für Echtzeit-Updates
   useEffect(() => {
@@ -320,12 +445,15 @@ function App() {
     setCurrentUser(email);
     setIsAdminReviewing(false);
     if (email === 'admin@internal') {
+        saveSession({ email, view: 'admin-dashboard' });
         setView('admin-dashboard');
     } else if (email === 'test-account@internal' || email === 'XPLM2') {
         setIsSandboxMode(true);
         setMessages([]); 
+        saveSession({ email, view: 'dashboard', isSandboxMode: true });
         setView('dashboard');
     } else {
+        saveSession({ email, view: 'hub' });
         setView('hub');
     }
   };
@@ -666,9 +794,11 @@ function App() {
         productions={productions}
         onSelectProduction={(id) => {
             setActiveProductionId(id);
+            saveSession({ email: currentUser, view: 'dashboard', activeProductionId: id });
             setView('dashboard');
         }}
         onLogout={() => {
+            clearSession();
             setCurrentUser('');
             setView('landing');
         }}
@@ -689,7 +819,7 @@ function App() {
       <AdminDashboard 
           lang={lang} 
           productions={productions} 
-          onLogout={() => { setView('landing'); setIsAdminReviewing(false); }} 
+          onLogout={() => { clearSession(); setView('landing'); setIsAdminReviewing(false); }} 
           onAddProduction={handleCreateProduction} 
           onInvite={handleInviteProduction} 
           onUpdateProduction={handleUpdateProduction} 
@@ -730,6 +860,7 @@ function App() {
                 setIsRestrictedCoAdmin(false);
                 setIsAdminReviewing(false);
                 setActiveProductionId(null);
+                saveSession({ email: currentUser, view: 'hub' });
                 setView('hub');
               }}
             >
@@ -741,6 +872,7 @@ function App() {
                   setView('admin-dashboard');
                   setIsAdminReviewing(false);
               } else {
+                  clearSession();
                   setIsSandboxMode(false); 
                   setIsRestrictedCoAdmin(false);
                   setIsAdminReviewing(false);
@@ -750,6 +882,11 @@ function App() {
           }}>
             <LogOut size={14} />{(isAdminReviewing && !isRestrictedCoAdmin) ? 'Back to Admin' : t.logout}
           </button>
+          {sessionTimeLeft !== null && (
+            <div className="text-[9px] text-slate-600 font-mono tabular-nums ml-1" title="Session läuft ab bei Inaktivität">
+              {Math.floor(sessionTimeLeft / 60000)}:{String(Math.floor((sessionTimeLeft % 60000) / 1000)).padStart(2, '0')}
+            </div>
+          )}
         </div>
       </header>
       <main className="flex-1 flex flex-col items-center justify-center px-8">
