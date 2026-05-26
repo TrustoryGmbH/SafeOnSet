@@ -899,13 +899,13 @@ function App() {
         <Dashboard 
           lang={lang} 
           isSandboxMode={isSandboxMode}
-          messages={messages.filter(m => isSandboxMode ? true : m.production_id === currentProduction?.id)} 
+          messages={messages.filter(m => isSandboxMode ? true : m.production_id === (currentProduction?.id || activeProductionId))} 
           schedule={schedule} 
           onOpenInbox={() => {}} 
           onOpenHistory={() => {}} 
           onOpenEmail={() => {}} 
           productionName={currentProduction?.name || 'Produktion'} 
-          productionId={currentProduction?.id || 'test'} 
+          productionId={currentProduction?.id || activeProductionId || 'test'} 
           productionStartDate={(currentProduction as any)?.created_at}
         />
       </main>
