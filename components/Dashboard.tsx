@@ -130,7 +130,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [newDayNum, setNewDayNum] = useState<string>('');
   const [newDayDate, setNewDayDate] = useState<string>('');
   const [schedError, setSchedError] = useState<string | null>(null);
-  const [midTab, setMidTab] = useState<'trend' | 'ai-advisor' | 'heatmap'>('trend');
+  const [midTab] = useState<'ai-advisor'>('ai-advisor');
 
   useEffect(() => {
     setLocalMessages(messages);
@@ -546,193 +546,116 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Middle: Premium Multi-Tab Workspace */}
       <div className="flex flex-col border-r border-white/5 bg-slate-950/15">
         
-        {/* Workspace Tab Headers */}
-        <div className="border-b border-white/5 flex p-4 justify-between items-center bg-black/10">
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setMidTab('trend')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
-                midTab === 'trend' 
-                  ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20' 
-                  : 'text-slate-500 hover:text-slate-300 border border-transparent'
-              }`}
-            >
-              <TrendingUp size={12} />
-              {lang === 'de' ? 'Drehplan Trend' : 'Shoot Trend'}
-            </button>
-            
-            <button 
-              onClick={() => setMidTab('ai-advisor')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 relative ${
-                midTab === 'ai-advisor' 
-                  ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' 
-                  : 'text-slate-500 hover:text-slate-300 border border-transparent'
-              }`}
-            >
-              <Brain size={12} />
-              AI Advisor
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full animate-ping" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border border-indigo-400" />
-            </button>
-            
-            <button 
-              onClick={() => setMidTab('heatmap')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
-                midTab === 'heatmap' 
-                  ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20' 
-                  : 'text-slate-500 hover:text-slate-300 border border-transparent'
-              }`}
-            >
-              <Activity size={12} />
-              {lang === 'de' ? 'Heatmap' : 'Heatmap'}
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-1 bg-white/5 border border-white/5 rounded-full px-2 py-0.5">
-             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-             <span className="text-[8px] font-bold text-slate-400 tracking-widest uppercase">Live</span>
-          </div>
-        </div>
+         {/* AI Advisor Header */}
+         <div className="border-b border-white/5 flex p-4 justify-between items-center bg-black/10">
+           <div className="flex items-center gap-2">
+             <Brain size={14} className="text-indigo-400" />
+             <span className="text-[10px] font-black tracking-[0.15em] text-slate-400 uppercase">AI Set Risk Advisory</span>
+             <span className="relative flex items-center ml-1">
+               <span className="absolute w-2.5 h-2.5 bg-indigo-500 rounded-full animate-ping" />
+               <span className="w-2.5 h-2.5 bg-indigo-500 rounded-full border border-indigo-400" />
+             </span>
+           </div>
+           <div className="flex items-center gap-1 text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              <Sparkles size={10} /> Smart Scan
+           </div>
+         </div>
 
-        <div className="p-8 flex-1 overflow-hidden flex flex-col justify-between">
-          
-          {midTab === 'trend' && (
-            <div className="flex-1 flex flex-col justify-between animate-in fade-in slide-in-from-left-4 duration-300">
-              <div className="flex items-center gap-2 mb-8">
-                <TrendingUp size={14} className="text-slate-500" />
-                <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{t.hTrend}</span>
-              </div>
-              
-              <div className="space-y-5 overflow-y-auto max-h-[380px] pr-2 custom-scrollbar flex-1">
-                {trendDays.map((day, idx) => (
-                  <div key={idx} className="flex items-center gap-4 group">
-                    <span className={`text-xs font-bold w-16 transition-colors ${idx === 0 ? 'text-white' : 'text-slate-500 group-hover:text-slate-400'}`}>{day.label}</span>
-                    <div className="flex-1 h-2 bg-slate-800/50 rounded-full overflow-hidden border border-white/5 relative">
-                      <div 
-                        className="h-full rounded-full transition-all duration-700 ease-out" 
-                        style={{ width: `${day.score}%`, backgroundColor: getColor(day.score) }}
-                      ></div>
-                    </div>
-                    <span className="text-[10px] font-black text-slate-400 w-10 text-right tracking-tighter">{day.score}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+         <div className="p-6 flex-1 overflow-y-auto flex flex-col gap-5 custom-scrollbar">
+           
+           {/* Risk + Satisfaction Cards */}
+           <div className="grid grid-cols-2 gap-3">
+             <div className={`p-4 rounded-2xl border transition-all ${
+               riskLevel === 'LOW' 
+                 ? 'bg-emerald-950/10 border-emerald-500/10' 
+                 : riskLevel === 'MEDIUM'
+                   ? 'bg-amber-950/10 border-amber-500/10'
+                   : 'bg-rose-950/10 border-rose-500/10 shadow-[0_0_15px_rgba(239,68,68,0.05)]'
+             }`}>
+               <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                 {lang === 'de' ? 'Risiko-Level' : 'Set Risk Level'}
+               </span>
+               <span className={`text-sm font-black uppercase tracking-wider ${
+                 riskLevel === 'LOW' ? 'text-emerald-400' : riskLevel === 'MEDIUM' ? 'text-amber-400' : 'text-rose-400'
+               }`}>
+                 {riskLevel === 'LOW' 
+                   ? (lang === 'de' ? 'Gering' : 'Low') 
+                   : riskLevel === 'MEDIUM' 
+                     ? (lang === 'de' ? 'Erhöht' : 'Medium') 
+                     : (lang === 'de' ? 'Kritisch' : 'Critical')
+                 }
+               </span>
+             </div>
+             
+             <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+               <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                 {lang === 'de' ? 'Zufriedenheit' : 'Satisfaction'}
+               </span>
+               <span className="text-sm font-black text-white tracking-wider">{satisfactionIndex}%</span>
+             </div>
+           </div>
 
-          {midTab === 'ai-advisor' && (
-            <div className="flex-1 flex flex-col justify-between animate-in fade-in slide-in-from-right-4 duration-300">
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <Brain size={14} className="text-indigo-400" />
-                    <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">AI Set Risk Advisory</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                     <Sparkles size={10} /> Smart Scan
-                  </div>
-                </div>
+           {/* Trend Summary */}
+           <div className="p-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-3">
+             <TrendingUp size={14} className="text-slate-500 flex-shrink-0" />
+             <p className="text-[11px] text-slate-400 leading-relaxed">
+               {(() => {
+                 const totalMsgs = localMessages.length;
+                 const negMsgs = localMessages.filter(m => m.score > 0).length;
+                 const openMsgs = localMessages.filter(m => m.score > 0 && !m.resolved).length;
+                 if (totalMsgs === 0) return lang === 'de' ? 'Noch keine Feedbacks vorhanden. Die Analyse startet automatisch.' : 'No feedback yet. Analysis starts automatically.';
+                 if (negMsgs === 0) return lang === 'de' ? `${totalMsgs} Feedbacks — alle positiv. Hervorragende Set-Atmosphäre.` : `${totalMsgs} feedbacks — all positive. Excellent set atmosphere.`;
+                 return lang === 'de' 
+                   ? `${totalMsgs} Feedbacks, davon ${negMsgs} negativ (${openMsgs} offen). ${openMsgs > 2 ? 'Sofortige Aufmerksamkeit empfohlen.' : 'Situation unter Kontrolle.'}`
+                   : `${totalMsgs} feedbacks, ${negMsgs} negative (${openMsgs} open). ${openMsgs > 2 ? 'Immediate attention recommended.' : 'Situation under control.'}`;
+               })()}
+             </p>
+           </div>
 
-                {/* Dashboard Metrics Grid */}
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  <div className={`p-4 rounded-2xl border transition-all ${
-                    riskLevel === 'LOW' 
-                      ? 'bg-emerald-950/10 border-emerald-500/10' 
-                      : riskLevel === 'MEDIUM'
-                        ? 'bg-amber-950/10 border-amber-500/10'
-                        : 'bg-rose-950/10 border-rose-500/10 shadow-[0_0_15px_rgba(239,68,68,0.05)]'
-                  }`}>
-                    <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Set Risk Level</span>
-                    <span className={`text-sm font-black uppercase tracking-wider ${
-                      riskLevel === 'LOW' ? 'text-emerald-400' : riskLevel === 'MEDIUM' ? 'text-amber-400' : 'text-rose-400'
-                    }`}>
-                      {riskLevel === 'LOW' 
-                        ? (lang === 'de' ? 'Gering' : 'Low') 
-                        : riskLevel === 'MEDIUM' 
-                          ? (lang === 'de' ? 'Erhöht' : 'Medium') 
-                          : (lang === 'de' ? 'Kritisch' : 'Critical')
-                      }
-                    </span>
-                  </div>
-                  
-                  <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                    <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Set Satisfaction</span>
-                    <span className="text-sm font-black text-white tracking-wider">{satisfactionIndex}%</span>
-                  </div>
-                </div>
-
-                {/* Smart recommendations */}
-                <div className="space-y-3 flex-1 overflow-y-auto max-h-[220px] custom-scrollbar pr-2">
-                   <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest">Active Safe Recommendations</span>
-                   
-                   {aiRecommendations.map((rec, i) => (
-                      <div key={i} className="p-4 bg-indigo-950/5 border border-indigo-500/10 rounded-2xl flex gap-3 text-left">
-                         <div className="p-1.5 bg-indigo-500/10 rounded-xl h-fit border border-indigo-500/20 text-indigo-400">
-                            <ShieldAlert size={14} />
-                         </div>
-                         <div>
-                            <h4 className="text-[10px] font-black uppercase tracking-wider text-indigo-300">Safety recommendation</h4>
-                            <p className="text-[11px] text-slate-400 leading-relaxed mt-1 font-medium">{rec}</p>
-                         </div>
-                      </div>
-                   ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {midTab === 'heatmap' && (
-            <div className="flex-1 flex flex-col justify-between animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <div className="flex items-center gap-2 mb-6">
-                <Activity size={14} className="text-emerald-400" />
-                <span className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase">{lang === 'de' ? 'Crew-Departments Auslastung' : 'Department Safety Scores'}</span>
-              </div>
-
-              <div className="space-y-3.5 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar flex-1">
-                 {departmentStats.map((dept, i) => (
-                    <div 
-                      key={i} 
-                      className={`p-3 rounded-2xl border transition-all ${
-                        dept.health < 80 
-                          ? 'bg-rose-950/5 border-rose-500/10 shadow-[0_0_10px_rgba(239,68,68,0.02)]' 
-                          : 'bg-white/[0.01] border-white/5 hover:border-white/10'
-                      }`}
-                    >
-                       <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                             <span className="text-xs">{dept.icon}</span>
-                             <span className="text-xs font-bold text-slate-200">{dept.label}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                             {dept.unresolvedNegatives > 0 && (
-                               <span className="px-2 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[8px] font-black uppercase rounded-lg">
-                                  {dept.unresolvedNegatives} Open
-                               </span>
-                             )}
-                             <span className="text-[10px] font-black text-slate-400">{dept.health}%</span>
-                          </div>
-                       </div>
-                       
-                       <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden border border-white/5 relative">
-                          <div 
-                            className="h-full rounded-full transition-all duration-500" 
-                            style={{ 
-                              width: `${dept.health}%`, 
-                              backgroundColor: dept.health >= 90 
-                                ? '#10b981' 
-                                : dept.health >= 70 
-                                  ? '#f59e0b' 
-                                  : '#ef4444' 
-                            }}
-                          />
-                       </div>
-                    </div>
+           {/* Department Safety Overview */}
+           {departmentStats.length > 0 && (
+             <div>
+               <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                 {lang === 'de' ? 'Abteilungen' : 'Departments'}
+               </span>
+               <div className="space-y-2">
+                 {departmentStats.slice(0, 5).map((dept, i) => (
+                   <div key={i} className="flex items-center gap-3">
+                     <span className="text-xs w-5 text-center">{dept.icon}</span>
+                     <span className="text-[11px] font-bold text-slate-300 w-24 truncate">{dept.label}</span>
+                     <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                       <div className="h-full rounded-full transition-all duration-500" style={{ 
+                         width: `${dept.health}%`, 
+                         backgroundColor: dept.health >= 90 ? '#10b981' : dept.health >= 70 ? '#f59e0b' : '#ef4444' 
+                       }} />
+                     </div>
+                     <span className="text-[10px] font-bold text-slate-500 w-8 text-right">{dept.health}%</span>
+                     {dept.unresolvedNegatives > 0 && (
+                       <span className="px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[8px] font-black rounded">{dept.unresolvedNegatives}</span>
+                     )}
+                   </div>
                  ))}
-              </div>
-            </div>
-          )}
+               </div>
+             </div>
+           )}
 
-        </div>
+           {/* AI Recommendations */}
+           <div>
+             <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3">
+               {lang === 'de' ? 'Empfehlungen' : 'Recommendations'}
+             </span>
+             <div className="space-y-2.5">
+               {aiRecommendations.map((rec, i) => (
+                 <div key={i} className="p-3.5 bg-indigo-950/5 border border-indigo-500/10 rounded-xl flex gap-3">
+                   <div className="p-1.5 bg-indigo-500/10 rounded-lg h-fit border border-indigo-500/20 text-indigo-400">
+                     <ShieldAlert size={12} />
+                   </div>
+                   <p className="text-[11px] text-slate-400 leading-relaxed font-medium">{rec}</p>
+                 </div>
+               ))}
+             </div>
+           </div>
+         </div>
 
         <div className="p-6 border-t border-white/5 grid grid-cols-2 gap-3 bg-black/10">
            <button 
