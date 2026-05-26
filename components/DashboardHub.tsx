@@ -1,5 +1,5 @@
 import React from 'react';
-import { Language, Production } from '../types';
+import { Language, Production, UserGroup } from '../types';
 import { TRANSLATIONS } from '../constants';
 import { Building, ArrowRight, LogOut, Shield, User, Clock, CheckCircle, MessageSquare, AlertCircle, Plus } from 'lucide-react';
 
@@ -7,6 +7,7 @@ interface DashboardHubProps {
   lang: Language;
   email: string;
   productions: Production[];
+  userGroup: UserGroup;
   onSelectProduction: (id: string) => void;
   onLogout: () => void;
   onRegisterClick: () => void;
@@ -21,10 +22,16 @@ const LOCAL_TRANS: Record<Language, any> = {
     roleCoordinator: "Haupt-Verwalter",
     roleCoAdmin: "Co-Admin",
     roleTeam: "Teammitglied",
+    roleSupervisor: "Supervisor",
+    roleTrust: "Vertrauensstelle",
     messagesCount: "Meldungen",
+    incidentsOnly: "Vorfälle",
     enter: "Dashboard öffnen",
     requestAccess: "Neue Produktion anlegen",
     welcome: "Willkommen zurück",
+    groupBadge1: "Produktion",
+    groupBadge2: "Supervisor",
+    groupBadge3: "Vertrauensstelle",
   },
   en: {
     title: "Your Productions",
@@ -33,22 +40,34 @@ const LOCAL_TRANS: Record<Language, any> = {
     roleCoordinator: "Primary Coordinator",
     roleCoAdmin: "Co-Admin",
     roleTeam: "Team Member",
+    roleSupervisor: "Supervisor",
+    roleTrust: "Trust Contact",
     messagesCount: "Reports",
+    incidentsOnly: "Incidents",
     enter: "Open Dashboard",
     requestAccess: "Create New Production",
     welcome: "Welcome Back",
+    groupBadge1: "Production",
+    groupBadge2: "Supervisor",
+    groupBadge3: "Trust Office",
   },
   ar: {
     title: "إنتاجاتك",
     subtitle: "اختر مشروعًا لإدارة لوحة معلومات السلامة الخاصة به",
-    noProds: "لم يتم العثور على أي إنتاجات لعنوان البريد الإلكتروني dieses.",
+    noProds: "لم يتم العثور على أي إنتاجات لعنوان البريد الإلكتروني.",
     roleCoordinator: "المنسق الرئيسي",
     roleCoAdmin: "مسؤول مساعد",
     roleTeam: "عضو الفريق",
+    roleSupervisor: "المشرف",
+    roleTrust: "مكتب الثقة",
     messagesCount: "بلاغات",
+    incidentsOnly: "حوادث",
     enter: "افتح لوحة التحكم",
     requestAccess: "إنشاء إنتاج جديد",
     welcome: "مرحباً بك مجدداً",
+    groupBadge1: "الإنتاج",
+    groupBadge2: "المشرف",
+    groupBadge3: "مكتب الثقة",
   }
 };
 
@@ -56,6 +75,7 @@ const DashboardHub: React.FC<DashboardHubProps> = ({
   lang,
   email,
   productions,
+  userGroup,
   onSelectProduction,
   onLogout,
   onRegisterClick,
@@ -64,16 +84,29 @@ const DashboardHub: React.FC<DashboardHubProps> = ({
   const t = TRANSLATIONS[lang];
   const lh = LOCAL_TRANS[lang] || LOCAL_TRANS['de'];
 
-  // Filter productions for this user
-  const userProductions = productions.filter(p => 
-    p.email?.toLowerCase() === email.toLowerCase() || 
-    p.team?.some((m: any) => m.email?.toLowerCase() === email.toLowerCase()) || 
-    p.co_admins?.some((ca: any) => ca.email?.toLowerCase() === email.toLowerCase())
-  );
+  // Filter productions based on user group
+  const userProductions = productions.filter(p => {
+    const email_l = email.toLowerCase();
+    if (userGroup === 3) {
+      return p.trust_contacts?.some(tc => tc.email?.toLowerCase() === email_l);
+    }
+    if (userGroup === 2) {
+      return p.supervisors?.some(s => s.email?.toLowerCase() === email_l);
+    }
+    // G1: coordinator, co_admin, team
+    return (
+      p.email?.toLowerCase() === email_l ||
+      p.co_admins?.some(ca => ca.email?.toLowerCase() === email_l) ||
+      p.team?.some((m: any) => m.email?.toLowerCase() === email_l)
+    );
+  });
 
   const getUserRole = (prod: Production) => {
-    if (prod.email?.toLowerCase() === email.toLowerCase()) return lh.roleCoordinator;
-    if (prod.co_admins?.some((ca: any) => ca.email?.toLowerCase() === email.toLowerCase())) return lh.roleCoAdmin;
+    const email_l = email.toLowerCase();
+    if (userGroup === 3) return lh.roleTrust;
+    if (userGroup === 2) return lh.roleSupervisor;
+    if (prod.email?.toLowerCase() === email_l) return lh.roleCoordinator;
+    if (prod.co_admins?.some((ca: any) => ca.email?.toLowerCase() === email_l)) return lh.roleCoAdmin;
     return lh.roleTeam;
   };
 
@@ -97,7 +130,18 @@ const DashboardHub: React.FC<DashboardHubProps> = ({
         <div className="flex items-center gap-4">
           <div className="hidden sm:flex flex-col text-right">
             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{lh.welcome}</span>
-            <span className="text-xs text-slate-300 font-medium">{email}</span>
+            <div className="flex items-center gap-2 justify-end">
+              <span className="text-xs text-slate-300 font-medium">{email}</span>
+              {userGroup >= 2 && (
+                <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                  userGroup === 3 
+                    ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' 
+                    : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+                }`}>
+                  {userGroup === 3 ? lh.groupBadge3 : lh.groupBadge2}
+                </span>
+              )}
+            </div>
           </div>
           <button 
             onClick={onLogout} 
@@ -118,12 +162,15 @@ const DashboardHub: React.FC<DashboardHubProps> = ({
             </h1>
             <p className="text-slate-400 text-sm font-medium">{lh.subtitle}</p>
           </div>
-          <button 
-            onClick={onRegisterClick}
-            className="bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-2 text-xs font-black uppercase tracking-widest px-5 py-3.5 rounded-xl transition-all shadow-lg shadow-blue-900/40 hover:scale-[1.02] active:scale-95 shrink-0"
-          >
-            <Plus size={16} /> {lh.requestAccess}
-          </button>
+          {/* G3 (trust contacts) don’t create productions */}
+          {userGroup !== 3 && (
+            <button 
+              onClick={onRegisterClick}
+              className="bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-2 text-xs font-black uppercase tracking-widest px-5 py-3.5 rounded-xl transition-all shadow-lg shadow-blue-900/40 hover:scale-[1.02] active:scale-95 shrink-0"
+            >
+              <Plus size={16} /> {lh.requestAccess}
+            </button>
+          )}
         </div>
 
         {userProductions.length === 0 ? (
@@ -183,7 +230,12 @@ const DashboardHub: React.FC<DashboardHubProps> = ({
                     <div className="flex items-center gap-4 text-xs text-slate-400 font-medium">
                       <div className="flex items-center gap-1.5">
                         <MessageSquare size={14} className="text-slate-500" />
-                        <span>{messageCount} {lh.messagesCount}</span>
+                        <span>
+                          {userGroup === 3 
+                            ? `${messages.filter(m => m.production_id === prod.id && m.score > 0).length} ${lh.incidentsOnly}`
+                            : `${messageCount} ${lh.messagesCount}`
+                          }
+                        </span>
                       </div>
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-1 group-hover:translate-x-1.5 transition-transform duration-300">

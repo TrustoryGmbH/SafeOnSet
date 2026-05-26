@@ -27,6 +27,8 @@ const mapProduction = (p: any): Production => ({
   status: p.status,
   team: p.team || [],
   co_admins: p.co_admins || [],
+  supervisors: p.supervisors || [],
+  trust_contacts: p.trust_contacts || [],
   country: p.country,
   periodStart: p.period_start,
   periodEnd: p.period_end
@@ -55,6 +57,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [coAdminEmail, setCoAdminEmail] = useState('');
   const [isAddingCoAdmin, setIsAddingCoAdmin] = useState(false);
   const [needsMigration, setNeedsMigration] = useState(false);
+
+  // Supervisor states (G2)
+  const [supervisorName, setSupervisorName] = useState('');
+  const [supervisorEmail, setSupervisorEmail] = useState('');
+  const [supervisorCompany, setSupervisorCompany] = useState('');
+  const [isAddingSupervisor, setIsAddingSupervisor] = useState(false);
+
+  // Trust Contact states (G3)
+  const [trustName, setTrustName] = useState('');
+  const [trustEmail, setTrustEmail] = useState('');
+  const [trustRole, setTrustRole] = useState('');
+  const [isAddingTrust, setIsAddingTrust] = useState(false);
 
   useEffect(() => {
     // Check if co_admins column exists by trying a small select
@@ -177,6 +191,12 @@ ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE productions
 ADD COLUMN IF NOT EXISTS co_admins JSONB DEFAULT '[]'::jsonb;
 
+ALTER TABLE productions
+ADD COLUMN IF NOT EXISTS supervisors JSONB DEFAULT '[]'::jsonb;
+
+ALTER TABLE productions
+ADD COLUMN IF NOT EXISTS trust_contacts JSONB DEFAULT '[]'::jsonb;
+
 -- Standard Tabelle falls noch gar nicht vorhanden
 CREATE TABLE IF NOT EXISTS access_requests (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -207,6 +227,8 @@ CREATE TABLE IF NOT EXISTS productions (
   status TEXT DEFAULT 'Active',
   team JSONB DEFAULT '[]'::jsonb,
   co_admins JSONB DEFAULT '[]'::jsonb,
+  supervisors JSONB DEFAULT '[]'::jsonb,
+  trust_contacts JSONB DEFAULT '[]'::jsonb,
   country TEXT,
   period_start TEXT,
   period_end TEXT,
@@ -692,6 +714,216 @@ VALUES ('SUPERIOR', 'kutzner.nils@yahoo.de', 'info@vonwesternhagen.com', 'Invite
                                 {(selectedProd.co_admins || []).length === 0 && (
                                     <div className="text-center py-6 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
                                         <p className="text-slate-500 text-[10px] font-medium italic">Noch keine Co-Admins hinzugefügt.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* SUPERVISOR SECTION (G2) */}
+                    <div className="pt-6 border-t border-white/10 mt-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex flex-col">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-500 flex items-center gap-1.5">
+                                    <Eye size={12} /> Supervisoren
+                                </h3>
+                                <span className="text-[9px] text-slate-500">Streamer, Produktionshäuser (übergeordnet)</span>
+                            </div>
+                            {!isAddingSupervisor && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setIsAddingSupervisor(true); }} 
+                                    className="px-3 py-1.5 bg-cyan-600/20 text-cyan-400 text-[10px] font-black rounded-lg uppercase hover:bg-cyan-600 hover:text-white transition-all flex items-center gap-1.5"
+                                >
+                                    <Plus size={12} /> Hinzufügen
+                                </button>
+                            )}
+                        </div>
+
+                        {isAddingSupervisor ? (
+                            <div className="bg-cyan-500/5 p-5 rounded-2xl border border-cyan-500/20 space-y-3 mb-6 animate-in slide-in-from-top-2 border-dashed">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold uppercase text-slate-500 ml-1">Name</label>
+                                        <input 
+                                            placeholder="z.B. Max Mustermann" 
+                                            value={supervisorName}
+                                            onChange={e => setSupervisorName(e.target.value)}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 focus:ring-cyan-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold uppercase text-slate-500 ml-1">Firma (Optional)</label>
+                                        <input 
+                                            placeholder="z.B. Studio Hamburg" 
+                                            value={supervisorCompany}
+                                            onChange={e => setSupervisorCompany(e.target.value)}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 focus:ring-cyan-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase text-slate-500 ml-1">E-Mail Adresse</label>
+                                    <input 
+                                        placeholder="supervisor@beispiel.de" 
+                                        value={supervisorEmail}
+                                        onChange={e => setSupervisorEmail(e.target.value)}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 focus:ring-cyan-500 outline-none"
+                                    />
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                    <button onClick={() => setIsAddingSupervisor(false)} className="flex-1 py-3 bg-slate-800 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-white transition-colors">Abbrechen</button>
+                                    <button onClick={async () => {
+                                        if (!selectedProd || !supervisorName || !supervisorEmail) return;
+                                        const newSup = { id: Math.random().toString(36).substring(7), name: supervisorName, email: supervisorEmail, company: supervisorCompany || undefined, added_at: new Date().toISOString() };
+                                        const updated = [...(selectedProd.supervisors || []), newSup];
+                                        try {
+                                            await supabase.from('productions').update({ supervisors: updated }).eq('id', selectedProd.id);
+                                            onUpdateProduction(selectedProd.id, { supervisors: updated } as any);
+                                            setSelectedProd({ ...selectedProd, supervisors: updated });
+                                            setSupervisorName(''); setSupervisorEmail(''); setSupervisorCompany(''); setIsAddingSupervisor(false);
+                                        } catch (err: any) { alert(err.message); }
+                                    }} className="flex-1 py-3 bg-cyan-600 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-cyan-900/40">Hinzufügen</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {(selectedProd.supervisors || []).map((sup, idx) => (
+                                    <div key={sup.id} className="group flex justify-between items-center p-4 bg-white/5 hover:bg-white/[0.07] rounded-2xl border border-white/5 transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-500 font-bold text-xs">
+                                                {sup.name[0]?.toUpperCase()}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <div className="font-bold text-white text-sm flex items-center gap-2">
+                                                    {sup.name}
+                                                    {sup.company && <span className="text-[9px] text-slate-500 font-medium">({sup.company})</span>}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500">{sup.email}</div>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if(!confirm(`${sup.name} als Supervisor entfernen?`)) return;
+                                                const filtered = (selectedProd.supervisors || []).filter((_, i) => i !== idx);
+                                                await supabase.from('productions').update({ supervisors: filtered }).eq('id', selectedProd.id);
+                                                onUpdateProduction(selectedProd.id, { supervisors: filtered } as any);
+                                                setSelectedProd({...selectedProd, supervisors: filtered});
+                                            }}
+                                            className="p-2.5 text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {(selectedProd.supervisors || []).length === 0 && (
+                                    <div className="text-center py-6 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
+                                        <p className="text-slate-500 text-[10px] font-medium italic">Noch keine Supervisoren hinzugefügt.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* TRUST CONTACT SECTION (G3) */}
+                    <div className="pt-6 border-t border-white/10 mt-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex flex-col">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-500 flex items-center gap-1.5">
+                                    <Shield size={12} /> Vertrauensstelle
+                                </h3>
+                                <span className="text-[9px] text-slate-500">Konfliktlöser, Vertrauenspersonen (z.B. Themis)</span>
+                            </div>
+                            {!isAddingTrust && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setIsAddingTrust(true); }} 
+                                    className="px-3 py-1.5 bg-purple-600/20 text-purple-400 text-[10px] font-black rounded-lg uppercase hover:bg-purple-600 hover:text-white transition-all flex items-center gap-1.5"
+                                >
+                                    <Plus size={12} /> Hinzufügen
+                                </button>
+                            )}
+                        </div>
+
+                        {isAddingTrust ? (
+                            <div className="bg-purple-500/5 p-5 rounded-2xl border border-purple-500/20 space-y-3 mb-6 animate-in slide-in-from-top-2 border-dashed">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold uppercase text-slate-500 ml-1">Name</label>
+                                        <input 
+                                            placeholder="z.B. Anna Schmidt" 
+                                            value={trustName}
+                                            onChange={e => setTrustName(e.target.value)}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 focus:ring-purple-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold uppercase text-slate-500 ml-1">Rolle</label>
+                                        <input 
+                                            placeholder="z.B. Themis, Vertrauensperson" 
+                                            value={trustRole}
+                                            onChange={e => setTrustRole(e.target.value)}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 focus:ring-purple-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase text-slate-500 ml-1">E-Mail Adresse</label>
+                                    <input 
+                                        placeholder="vertrauen@beispiel.de" 
+                                        value={trustEmail}
+                                        onChange={e => setTrustEmail(e.target.value)}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs focus:ring-1 focus:ring-purple-500 outline-none"
+                                    />
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                    <button onClick={() => setIsAddingTrust(false)} className="flex-1 py-3 bg-slate-800 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-white transition-colors">Abbrechen</button>
+                                    <button onClick={async () => {
+                                        if (!selectedProd || !trustName || !trustEmail) return;
+                                        const newTC = { id: Math.random().toString(36).substring(7), name: trustName, email: trustEmail, role: trustRole || 'Vertrauensperson', added_at: new Date().toISOString() };
+                                        const updated = [...(selectedProd.trust_contacts || []), newTC];
+                                        try {
+                                            await supabase.from('productions').update({ trust_contacts: updated }).eq('id', selectedProd.id);
+                                            onUpdateProduction(selectedProd.id, { trust_contacts: updated } as any);
+                                            setSelectedProd({ ...selectedProd, trust_contacts: updated });
+                                            setTrustName(''); setTrustEmail(''); setTrustRole(''); setIsAddingTrust(false);
+                                        } catch (err: any) { alert(err.message); }
+                                    }} className="flex-1 py-3 bg-purple-600 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-purple-900/40">Hinzufügen</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {(selectedProd.trust_contacts || []).map((tc, idx) => (
+                                    <div key={tc.id} className="group flex justify-between items-center p-4 bg-white/5 hover:bg-white/[0.07] rounded-2xl border border-white/5 transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold text-xs">
+                                                {tc.name[0]?.toUpperCase()}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <div className="font-bold text-white text-sm flex items-center gap-2">
+                                                    {tc.name}
+                                                    {tc.role && <span className="text-[8px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded uppercase font-black">{tc.role}</span>}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500">{tc.email}</div>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if(!confirm(`${tc.name} als Vertrauensperson entfernen?`)) return;
+                                                const filtered = (selectedProd.trust_contacts || []).filter((_, i) => i !== idx);
+                                                await supabase.from('productions').update({ trust_contacts: filtered }).eq('id', selectedProd.id);
+                                                onUpdateProduction(selectedProd.id, { trust_contacts: filtered } as any);
+                                                setSelectedProd({...selectedProd, trust_contacts: filtered});
+                                            }}
+                                            className="p-2.5 text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {(selectedProd.trust_contacts || []).length === 0 && (
+                                    <div className="text-center py-6 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
+                                        <p className="text-slate-500 text-[10px] font-medium italic">Noch keine Vertrauenspersonen hinzugefügt.</p>
                                     </div>
                                 )}
                             </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TRANSLATIONS, INITIAL_SCHEDULE } from './constants';
-import { Language, Message, ShootDay, Production } from './types';
+import { Language, Message, ShootDay, Production, UserGroup } from './types';
 import Dashboard from './components/Dashboard';
 import MobileView from './components/MobileView';
 import Login from './components/Login';
@@ -20,6 +20,8 @@ const mapProduction = (p: any): Production => ({
   status: p.status,
   team: p.team || [],
   co_admins: p.co_admins || [],
+  supervisors: p.supervisors || [],
+  trust_contacts: p.trust_contacts || [],
   country: p.country,
   periodStart: p.period_start,
   periodEnd: p.period_end
@@ -44,6 +46,7 @@ function App() {
   const [activeProductionId, setActiveProductionId] = useState<string | null>(null);
   const [coAdminInfo, setCoAdminInfo] = useState<{ prodId: string; userId: string; email: string } | null>(null);
   const [sessionTimeLeft, setSessionTimeLeft] = useState<number | null>(null);
+  const [userGroup, setUserGroup] = useState<UserGroup | null>(null);
 
   // ============================================
   // SESSION PERSISTENCE + 5-MIN INACTIVITY LOGOUT
@@ -56,6 +59,7 @@ function App() {
   const saveSession = useCallback((data: {
     email: string; view: string; activeProductionId?: string | null;
     isSandboxMode?: boolean; isAdminReviewing?: boolean; isRestrictedCoAdmin?: boolean;
+    userGroup?: UserGroup | null;
   }) => {
     const session = { ...data, lastActivity: Date.now() };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -159,6 +163,7 @@ function App() {
         if (session.isSandboxMode) setIsSandboxMode(true);
         if (session.isAdminReviewing) setIsAdminReviewing(true);
         if (session.isRestrictedCoAdmin) setIsRestrictedCoAdmin(true);
+        if (session.userGroup !== undefined && session.userGroup !== null) setUserGroup(session.userGroup);
         setView(session.view || 'hub');
       } else {
         // Session expired
@@ -441,20 +446,59 @@ function App() {
     }
   };
 
+  // Detect which group a user belongs to based on email matches in productions
+  const detectUserGroup = (email: string): { group: UserGroup; prodIds: string[] } => {
+    if (email === 'admin@internal') return { group: 0, prodIds: [] };
+    const email_l = email.toLowerCase();
+    
+    // G3: Vertrauensstelle
+    const g3Prods = productions.filter(p =>
+      p.trust_contacts?.some(tc => tc.email?.toLowerCase() === email_l)
+    );
+    if (g3Prods.length > 0) return { group: 3, prodIds: g3Prods.map(p => p.id) };
+    
+    // G2: Supervisor
+    const g2Prods = productions.filter(p =>
+      p.supervisors?.some(s => s.email?.toLowerCase() === email_l)
+    );
+    if (g2Prods.length > 0) return { group: 2, prodIds: g2Prods.map(p => p.id) };
+    
+    // G1: Produktion (coordinator, co_admin, team)
+    const g1Prods = productions.filter(p =>
+      p.email?.toLowerCase() === email_l ||
+      p.co_admins?.some(ca => ca.email?.toLowerCase() === email_l) ||
+      p.team?.some(m => m.email?.toLowerCase() === email_l)
+    );
+    return { group: 1, prodIds: g1Prods.map(p => p.id) };
+  };
+
   const handleLogin = (email: string) => {
     setCurrentUser(email);
     setIsAdminReviewing(false);
     if (email === 'admin@internal') {
-        saveSession({ email, view: 'admin-dashboard' });
+        setUserGroup(0);
+        saveSession({ email, view: 'admin-dashboard', userGroup: 0 });
         setView('admin-dashboard');
     } else if (email === 'test-account@internal' || email === 'XPLM2') {
+        setUserGroup(1);
         setIsSandboxMode(true);
         setMessages([]); 
-        saveSession({ email, view: 'dashboard', isSandboxMode: true });
+        saveSession({ email, view: 'dashboard', isSandboxMode: true, userGroup: 1 });
         setView('dashboard');
     } else {
-        saveSession({ email, view: 'hub' });
-        setView('hub');
+        const { group, prodIds } = detectUserGroup(email);
+        setUserGroup(group);
+        
+        if (group === 1 && prodIds.length === 1) {
+          // G1 with exactly one production → go directly to dashboard
+          setActiveProductionId(prodIds[0]);
+          saveSession({ email, view: 'dashboard', activeProductionId: prodIds[0], userGroup: group });
+          setView('dashboard');
+        } else {
+          // G1 (multiple prods), G2, G3 → hub with overview
+          saveSession({ email, view: 'hub', userGroup: group });
+          setView('hub');
+        }
     }
   };
 
@@ -792,14 +836,16 @@ function App() {
         lang={lang}
         email={currentUser}
         productions={productions}
+        userGroup={userGroup || 1}
         onSelectProduction={(id) => {
             setActiveProductionId(id);
-            saveSession({ email: currentUser, view: 'dashboard', activeProductionId: id });
+            saveSession({ email: currentUser, view: 'dashboard', activeProductionId: id, userGroup });
             setView('dashboard');
         }}
         onLogout={() => {
             clearSession();
             setCurrentUser('');
+            setUserGroup(null);
             setView('landing');
         }}
         onRegisterClick={() => {
@@ -844,8 +890,11 @@ function App() {
             {isConnected ? <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> : <WifiOff size={10} className="text-rose-500" />}
             <span className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? 'text-emerald-500' : 'text-rose-500'}`}>
               {isConnected ? (
-                isSandboxMode ? 'Sandbox' : (
-                  isAdminReviewing ? (isRestrictedCoAdmin ? 'Co-Admin View' : 'Admin View') : 'Live Cloud'
+              isSandboxMode ? 'Sandbox' : (
+                  isAdminReviewing ? (isRestrictedCoAdmin ? 'Co-Admin View' : 'Admin View') 
+                  : userGroup === 3 ? 'Vertrauensstelle'
+                  : userGroup === 2 ? 'Supervisor'
+                  : 'Live Cloud'
                 )
               ) : 'Offline'}
             </span>
@@ -860,7 +909,7 @@ function App() {
                 setIsRestrictedCoAdmin(false);
                 setIsAdminReviewing(false);
                 setActiveProductionId(null);
-                saveSession({ email: currentUser, view: 'hub' });
+                saveSession({ email: currentUser, view: 'hub', userGroup });
                 setView('hub');
               }}
             >
@@ -899,7 +948,13 @@ function App() {
         <Dashboard 
           lang={lang} 
           isSandboxMode={isSandboxMode}
-          messages={messages.filter(m => isSandboxMode ? true : m.production_id === (currentProduction?.id || activeProductionId))} 
+          userGroup={userGroup || 1}
+          messages={(() => {
+            const filtered = messages.filter(m => isSandboxMode ? true : m.production_id === (currentProduction?.id || activeProductionId));
+            // G3 (Vertrauensstelle) sees only negative cases (score > 0)
+            if (userGroup === 3) return filtered.filter(m => m.score > 0);
+            return filtered;
+          })()} 
           schedule={schedule} 
           onOpenInbox={() => {}} 
           onOpenHistory={() => {}} 

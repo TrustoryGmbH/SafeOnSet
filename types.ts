@@ -1,6 +1,12 @@
 
 export type Language = 'en' | 'de' | 'ar';
 
+// Group 0: Super Admin (Trustory GmbH)
+// Group 1: Produktion (Produktionsleiter, Herstellungsleiter, Koordinator)
+// Group 2: Supervisor (Streamer, Produktionshäuser)
+// Group 3: Vertrauensstelle (Konfliktlöser, Vertrauenspersonen, Themis etc.)
+export type UserGroup = 0 | 1 | 2 | 3;
+
 export interface Message {
   id: string;
   date: string;
@@ -43,6 +49,22 @@ export interface AccessRequest {
   created_at: string;
 }
 
+export interface Supervisor {
+  id: string;
+  name: string;
+  email: string;
+  company?: string;
+  added_at?: string;
+}
+
+export interface TrustContact {
+  id: string;
+  name: string;
+  email: string;
+  role?: string; // e.g. "Vertrauensperson", "Themis", "Konfliktlöser"
+  added_at?: string;
+}
+
 export interface Production {
   id: string;
   name: string;
@@ -51,6 +73,8 @@ export interface Production {
   status: 'Active' | 'Pending' | 'Invited' | 'Finished' | 'Test';
   team?: TeamMember[];
   co_admins?: CoAdmin[];
+  supervisors?: Supervisor[];
+  trust_contacts?: TrustContact[];
   country?: string;
   periodStart?: string;
   periodEnd?: string;

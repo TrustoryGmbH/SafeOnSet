@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { TRANSLATIONS } from '../constants';
-import { Language, Message, ShootDay, Production } from '../types';
+import { Language, Message, ShootDay, Production, UserGroup } from '../types';
 import Smiley from './Smiley';
 import { generatePosterPDF } from '../services/pdfGenerator';
 import { 
@@ -22,6 +22,7 @@ interface DashboardProps {
   productionName: string;
   productionId: string;
   isSandboxMode?: boolean;
+  userGroup?: UserGroup;
   productionStartDate?: string; // Optional: Wann die Produktion aktiviert wurde
 }
 
@@ -106,7 +107,7 @@ const LOCAL_TRANS: Record<Language, any> = {
 const Dashboard: React.FC<DashboardProps> = ({ 
   lang, messages, schedule, 
   onOpenInbox, onOpenHistory, onOpenEmail, productionName, productionId, isSandboxMode = false,
-  productionStartDate
+  userGroup = 1, productionStartDate
 }) => {
   const t = TRANSLATIONS[lang];
   const lt = LOCAL_TRANS[lang] || LOCAL_TRANS['de'];
