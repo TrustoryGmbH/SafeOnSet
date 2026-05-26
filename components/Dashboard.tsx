@@ -27,79 +27,79 @@ interface DashboardProps {
 
 const LOCAL_TRANS: Record<Language, any> = {
   de: {
-    inboxTitleFull: "Sicherheits-Feedback & Vorfälle",
-    inboxSubtitle: "Meldungen und Stimmen am Filmset in Echtzeit",
-    filterAll: "Alle Stimmen",
+    inboxTitleFull: "Vertrauensstelle — Meldungen & Vorfälle",
+    inboxSubtitle: "Vertrauliche Meldungen vom Set in Echtzeit",
+    filterAll: "Alle Meldungen",
     filterOpen: "Offene Vorfälle",
     filterResolved: "Erledigte Fälle",
-    filterNegative: "Nur negative Vorfälle anzeigen",
-    positiveDay: "Positiver Drehtag 😊",
-    negativeDay: "Kritischer Vorfall 😓",
-    noText: "Kein schriftlicher Kommentar (Einfache positive Stimme)",
+    filterNegative: "Nur Vorfallmeldungen anzeigen",
+    positiveDay: "Keine Vorfälle gemeldet 😊",
+    negativeDay: "Vorfall gemeldet 😓",
+    noText: "Keine Beschreibung (Check-In ohne Vorfall)",
     markResolved: "Als erledigt markieren",
     markOpen: "Als offen markieren",
-    emptyState: "Keine Feedback-Meldungen für diese Filter-Auswahl.",
-    historyTitle: "Statistiken & Drehtag-Historie",
-    historySubtitle: "Tägliche Auswertung der Stimmung und Vorfälle",
+    emptyState: "Keine Meldungen für diese Filter-Auswahl.",
+    historyTitle: "Statistiken & Vorfallhistorie",
+    historySubtitle: "Tägliche Auswertung der Meldungen und Vorfälle",
     dayScore: "Tagesscore",
-    allPositive: "Ausschließlich positives Feedback",
-    incidentsReported: "kritische Meldung(en)",
+    allPositive: "Keine Vorfälle an diesem Tag",
+    incidentsReported: "Vorfall/Vorfälle gemeldet",
     anonymous: "Anonym",
     resolvedPill: "Erledigt",
     openPill: "Offen",
-    showComments: "Kommentare anzeigen",
-    hideComments: "Kommentare ausblenden",
-    noCritOnDay: "Keine kritischen Meldungen an diesem Tag."
+    showComments: "Details anzeigen",
+    hideComments: "Details ausblenden",
+    noCritOnDay: "Keine Vorfälle an diesem Tag gemeldet."
   },
   en: {
-    inboxTitleFull: "Safety Feedback & Incidents",
-    inboxSubtitle: "Real-time crew feedback and reports",
-    filterAll: "All Feedback",
+    inboxTitleFull: "Trust Office — Reports & Incidents",
+    inboxSubtitle: "Confidential reports from set in real-time",
+    filterAll: "All Reports",
     filterOpen: "Open Incidents",
     filterResolved: "Resolved Cases",
-    filterNegative: "Only show negative incidents",
-    positiveDay: "Positive Shooting Day 😊",
-    negativeDay: "Critical Incident 😓",
-    noText: "No written comment (Simple positive vote)",
+    filterNegative: "Only show incident reports",
+    positiveDay: "No incidents reported 😊",
+    negativeDay: "Incident reported 😓",
+    noText: "No description (Check-in without incident)",
     markResolved: "Mark as Resolved",
     markOpen: "Mark as Open",
-    emptyState: "No feedback matching this filter selection.",
-    historyTitle: "Statistics & Shooting History",
-    historySubtitle: "Daily analysis of moods and reported incidents",
+    emptyState: "No reports matching this filter selection.",
+    historyTitle: "Statistics & Incident History",
+    historySubtitle: "Daily analysis of reports and incidents",
     dayScore: "Day Score",
-    allPositive: "100% positive feedback",
-    incidentsReported: "critical report(s)",
+    allPositive: "No incidents on this day",
+    incidentsReported: "incident(s) reported",
     anonymous: "Anonymous",
     resolvedPill: "Resolved",
     openPill: "Open",
-    showComments: "Show comments",
-    hideComments: "Hide comments",
-    noCritOnDay: "No critical reports on this day."
+    showComments: "Show details",
+    hideComments: "Hide details",
+    noCritOnDay: "No incidents reported on this day."
   },
   ar: {
-    inboxTitleFull: "ملاحظات السلامة والحوادث",
-    inboxSubtitle: "آراء الطاقم وتقاريرهم في الوقت الفعلي",
-    filterAll: "كل الآراء",
+    inboxTitleFull: "مكتب الثقة — البلاغات والحوادث",
+    inboxSubtitle: "بلاغات سرية من موقع التصوير في الوقت الفعلي",
+    filterAll: "كل البلاغات",
     filterOpen: "الحوادث المفتوحة",
     filterResolved: "الحالات المحلولة",
-    filterNegative: "إظهار الحوادث السلبية فقط",
-    positiveDay: "يوم تصوير إيجابي 😊",
-    negativeDay: "حادث حرج 😓",
-    noText: "لا توجد تعليقات مكتوبة (تصويت بسيط)",
+    filterNegative: "إظهار بلاغات الحوادث فقط",
+    positiveDay: "لم يتم الإبلاغ عن أي حوادث 😊",
+    negativeDay: "تم الإبلاغ عن حادثة 😓",
+    noText: "لا يوجد وصف (تسجيل وصول بدون حادث)",
     markResolved: "تحديد كمحلول",
     markOpen: "تحديد كمفتوح",
-    emptyState: "لا توجد تعليقات تطابق هذا التصفية.",
-    historyTitle: "الإحصائيات وتاريخ التصوير",
-    historySubtitle: "التحليل اليومي للمزاج والحوادث المبلغ عنها",
+    emptyState: "لا توجد بلاغات تطابق هذا التصفية.",
+    historyTitle: "الإحصائيات وسجل الحوادث",
+    historySubtitle: "التحليل اليومي للبلاغات والحوادث",
     dayScore: "نتيجة اليوم",
-    allPositive: "تعليقات إيجابية بنسبة 100٪",
-    incidentsReported: "تقرير/تقارير حرجة",
+    allPositive: "لا حوادث في هذا اليوم",
+    incidentsReported: "حادثة/حوادث مُبلّغ عنها",
     anonymous: "مجهول",
     resolvedPill: "محلول",
     openPill: "مفتوح",
-    showComments: "عرض التعليقات",
-    hideComments: "إخفاء التعليقات",
-    noCritOnDay: "لا توجد تقارير حرجة في هذا اليوم."
+    showComments: "عرض التفاصيل",
+    hideComments: "إخفاء التفاصيل",
+    noCritOnDay: "لم يتم الإبلاغ عن حوادث في هذا اليوم."
   }
 };
 
@@ -1067,7 +1067,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div>
                 <h2 id="schedule-modal-title" className="text-xl font-extrabold text-white flex items-center gap-2">
                   <Clock className="text-blue-400" size={20} />
-                  {lang === 'de' ? 'Drehtage- & Terminplaner' : 'Shoot Schedule Planner'}
+                  {lang === 'de' ? 'Terminplaner' : 'Schedule Planner'}
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
                   {lang === 'de' 
@@ -1209,7 +1209,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
             {/* Modal Footer */}
             <div className="p-4 border-t border-white/5 bg-slate-950/20 text-center text-[10px] text-slate-500">
-              Safe on Set • Drehtage- & Terminplaner
+              Safe on Set • Vertrauensstelle
             </div>
 
           </div>
