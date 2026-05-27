@@ -27,6 +27,74 @@ const mapProduction = (p: any): Production => ({
   periodEnd: p.period_end
 });
 
+// ============================================
+// TEST ACCOUNTS — Fixed OTP codes for TestProjekt
+// ============================================
+const TEST_ACCOUNTS: Record<string, { otp: string; group: UserGroup }> = {
+  'g0@g0.de': { otp: '000000', group: 0 },
+  'g1@g1.de': { otp: '111111', group: 1 },
+  'g2@g2.de': { otp: '222222', group: 2 },
+  'g3@g3.de': { otp: '333333', group: 3 },
+};
+
+const isTestAccount = (email: string): boolean =>
+  Object.keys(TEST_ACCOUNTS).includes(email.toLowerCase());
+
+const getTestOTP = (email: string): string | null =>
+  TEST_ACCOUNTS[email.toLowerCase()]?.otp || null;
+
+// Demo data for TestProjekt
+const generateDemoMessages = (productionId: string): Message[] => {
+  const departments = ['Regie', 'Kamera', 'Ton', 'Maske', 'Kost\u00fcm', 'Licht', 'Produktion', 'Ausstattung'];
+  const now = new Date();
+  const msgs: Message[] = [];
+
+  for (let d = 0; d < 30; d++) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - d);
+    const dateStr = date.toISOString();
+
+    const positiveCount = 2 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < positiveCount; i++) {
+      msgs.push({
+        id: `demo-pos-${d}-${i}`,
+        date: dateStr,
+        text: '',
+        contact: 'Anonym',
+        score: 0,
+        department: departments[Math.floor(Math.random() * departments.length)],
+        resolved: false,
+        production_id: productionId
+      });
+    }
+
+    if (Math.random() < 0.3) {
+      const incidents = [
+        { text: 'Unangemessener Kommentar von einem Teammitglied gegen\u00fcber einer Kollegin. Bitte um Aufkl\u00e4rung.', dept: 'Regie' },
+        { text: 'Wiederholtes Anschreien durch Vorgesetzte am Set. Mehrere Zeugen vorhanden.', dept: 'Kamera' },
+        { text: 'Diskriminierender Witz \u00fcber Herkunft. Wurde als \u201enicht so gemeint\u201c abgetan.', dept: 'Licht' },
+        { text: '\u00dcberstunden werden nicht dokumentiert. Team traut sich nicht, etwas zu sagen.', dept: 'Produktion' },
+        { text: 'Ein Crew-Mitglied wurde ausgegrenzt und bei Entscheidungen \u00fcbergangen.', dept: 'Ausstattung' },
+        { text: 'Unerw\u00fcnschte Ber\u00fchrungen durch Kolleg:in. Betroffene Person m\u00f6chte anonym bleiben.', dept: 'Maske' },
+        { text: 'Einsch\u00fcchterndes Verhalten am Set. Klima der Angst.', dept: 'Ton' },
+        { text: 'Rassistischer Kommentar bei der Mittagspause. Mehrere Personen haben es geh\u00f6rt.', dept: 'Kost\u00fcm' },
+      ];
+      const incident = incidents[Math.floor(Math.random() * incidents.length)];
+      msgs.push({
+        id: `demo-neg-${d}`,
+        date: dateStr,
+        text: incident.text,
+        contact: 'Anonym',
+        score: 1,
+        department: incident.dept,
+        resolved: d > 7 ? true : false,
+        production_id: productionId
+      });
+    }
+  }
+  return msgs;
+};
+
 function App() {
   const [lang, setLang] = useState<Language>('de');
   const [view, setView] = useState<'landing' | 'login' | 'admin-login' | 'dashboard' | 'admin-dashboard' | 'mobile' | 'hub'>('landing');
@@ -475,7 +543,10 @@ function App() {
   const handleLogin = (email: string) => {
     setCurrentUser(email);
     setIsAdminReviewing(false);
-    if (email === 'admin@internal') {
+    const email_l = email.toLowerCase();
+
+    // G0 Super Admin: admin@internal OR g0@g0.de
+    if (email === 'admin@internal' || email_l === 'g0@g0.de') {
         setUserGroup(0);
         saveSession({ email, view: 'admin-dashboard', userGroup: 0 });
         setView('admin-dashboard');
@@ -488,14 +559,24 @@ function App() {
     } else {
         const { group, prodIds } = detectUserGroup(email);
         setUserGroup(group);
-        
+
+        // For test accounts: seed demo messages if TestProjekt exists
+        if (isTestAccount(email_l) && prodIds.length > 0) {
+          const testProdId = prodIds[0];
+          const demoMsgs = generateDemoMessages(testProdId);
+          setMessages(prev => {
+            const real = prev.filter(m => !m.id.startsWith('demo-'));
+            return [...demoMsgs, ...real];
+          });
+        }
+
         if (group === 1 && prodIds.length === 1) {
-          // G1 with exactly one production → go directly to dashboard
+          // G1 with exactly one production -> go directly to dashboard
           setActiveProductionId(prodIds[0]);
           saveSession({ email, view: 'dashboard', activeProductionId: prodIds[0], userGroup: group });
           setView('dashboard');
         } else {
-          // G1 (multiple prods), G2, G3 → hub with overview
+          // G1 (multiple prods), G2, G3 -> hub with overview
           saveSession({ email, view: 'hub', userGroup: group });
           setView('hub');
         }
@@ -576,6 +657,13 @@ function App() {
   };
 
   const handleSendOTP = async (email: string) => {
+    // Test accounts: use fixed OTP codes, skip email send
+    const fixedOTP = getTestOTP(email);
+    if (fixedOTP) {
+      setExpectedOTP(fixedOTP);
+      return true;
+    }
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setExpectedOTP(code);
     try {
