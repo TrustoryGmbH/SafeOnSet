@@ -242,6 +242,46 @@ function App() {
     }
   }, []); // Only on mount
 
+  // ============================================
+  // TEST ACCOUNT INJECTION EFFECT
+  // Ensures TestProjekt and demo messages exist for test accounts
+  // ============================================
+  useEffect(() => {
+    if (!currentUser) return;
+    const email_l = currentUser.toLowerCase().trim();
+    if (isTestAccount(email_l) && email_l !== 'g0@g0.de') {
+      const testProdId = 'test-projekt-id';
+      
+      // Inject dummy TestProjekt if it doesn't exist
+      setProductions(prev => {
+        if (prev.some(p => p.name === 'TestProjekt' || p.id === testProdId)) return prev;
+        
+        const dummyProd: Production = {
+           id: testProdId,
+           name: 'TestProjekt',
+           coordinator: 'Test Produktionsleiter',
+           email: 'g1@g1.de',
+           status: 'Active',
+           team: [],
+           co_admins: [],
+           supervisors: [{id:'sup1', name:'Test Supervisor', email:'g2@g2.de'}],
+           trust_contacts: [{id:'tc1', name:'Test Vertrauensperson', email:'g3@g3.de', role:'Vertrauensperson'}],
+           country: 'Deutschland',
+           periodStart: '01/2026',
+           periodEnd: '12/2026'
+        };
+        return [...prev, dummyProd];
+      });
+
+      // Seed demo messages
+      setMessages(prev => {
+        if (prev.some(m => m.id.startsWith('demo-'))) return prev;
+        const demoMsgs = generateDemoMessages(testProdId);
+        return [...demoMsgs, ...prev];
+      });
+    }
+  }, [currentUser]);
+
   // 10-Sekunden Polling für Echtzeit-Updates
   useEffect(() => {
     let interval: any;
@@ -517,8 +557,15 @@ function App() {
   // Detect which group a user belongs to based on email matches in productions
   const detectUserGroup = (email: string): { group: UserGroup; prodIds: string[] } => {
     if (email === 'admin@internal') return { group: 0, prodIds: [] };
-    const email_l = email.toLowerCase();
+    const email_l = email.toLowerCase().trim();
     
+    // FORCE TEST ACCOUNTS
+    if (isTestAccount(email_l)) {
+      const group = TEST_ACCOUNTS[email_l].group;
+      const testProd = productions.find(p => p.name === 'TestProjekt' || p.id === 'test-projekt-id');
+      return { group, prodIds: [testProd ? testProd.id : 'test-projekt-id'] };
+    }
+
     // G3: Vertrauensstelle
     const g3Prods = productions.filter(p =>
       p.trust_contacts?.some(tc => tc.email?.toLowerCase() === email_l)
@@ -559,16 +606,6 @@ function App() {
     } else {
         const { group, prodIds } = detectUserGroup(email);
         setUserGroup(group);
-
-        // For test accounts: seed demo messages if TestProjekt exists
-        if (isTestAccount(email_l) && prodIds.length > 0) {
-          const testProdId = prodIds[0];
-          const demoMsgs = generateDemoMessages(testProdId);
-          setMessages(prev => {
-            const real = prev.filter(m => !m.id.startsWith('demo-'));
-            return [...demoMsgs, ...real];
-          });
-        }
 
         if (group === 1 && prodIds.length === 1) {
           // G1 with exactly one production -> go directly to dashboard
