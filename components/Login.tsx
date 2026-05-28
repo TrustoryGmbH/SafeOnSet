@@ -170,9 +170,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const targetEmail = isAdminMode ? ADMIN_EMAIL : email;
-    if (!isAdminMode && email.toUpperCase() === 'XPLM2') { onLogin('XPLM2'); return; }
-    if (!isAdminMode && !email.includes('@')) { setError('Invalid Email'); return; }
+    const safeEmail = email.trim();
+    const targetEmail = isAdminMode ? ADMIN_EMAIL : safeEmail;
+    if (!isAdminMode && safeEmail.toUpperCase() === 'XPLM2') { onLogin('XPLM2'); return; }
+    if (!isAdminMode && !safeEmail.includes('@')) { setError('Invalid Email'); return; }
     setIsLoading(true);
     const success = await onSendOTP(targetEmail);
     setIsLoading(false);
@@ -243,7 +244,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang, onAdminClick, onR
             </div>
           </form>
         ) : (
-          <form onSubmit={(e) => { e.preventDefault(); if (otp === expectedOTP) onLogin(isAdminMode ? 'admin@internal' : email); else setError('Code falsch'); }} className="space-y-6">
+          <form onSubmit={(e) => { e.preventDefault(); if (otp === expectedOTP) onLogin(isAdminMode ? 'admin@internal' : email.trim()); else setError('Code falsch'); }} className="space-y-6">
             {/* Developer OTP Helper Banner for Local Testing */}
             {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('antigravity')) && expectedOTP && (
               <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-xl text-center mb-6 select-all animate-pulse">

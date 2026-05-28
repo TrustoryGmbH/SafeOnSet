@@ -12,16 +12,23 @@ import { supabase } from './services/supabase';
 import { generateFeedbackReportPDF } from './services/pdfGenerator';
 import { LogOut, WifiOff, Loader2, Beaker, AlertTriangle, ArrowLeft } from 'lucide-react';
 
+const safeParse = (val: any) => {
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch { return []; }
+  }
+  return val || [];
+};
+
 const mapProduction = (p: any): Production => ({
   id: p.id,
   name: p.name,
   coordinator: p.coordinator || p.contact_person || 'N/A',
   email: p.email,
   status: p.status,
-  team: p.team || [],
-  co_admins: p.co_admins || [],
-  supervisors: p.supervisors || [],
-  trust_contacts: p.trust_contacts || [],
+  team: safeParse(p.team),
+  co_admins: safeParse(p.co_admins),
+  supervisors: safeParse(p.supervisors),
+  trust_contacts: safeParse(p.trust_contacts),
   country: p.country,
   periodStart: p.period_start,
   periodEnd: p.period_end
@@ -38,10 +45,10 @@ const TEST_ACCOUNTS: Record<string, { otp: string; group: UserGroup }> = {
 };
 
 const isTestAccount = (email: string): boolean =>
-  Object.keys(TEST_ACCOUNTS).includes(email.toLowerCase());
+  Object.keys(TEST_ACCOUNTS).includes(email.toLowerCase().trim());
 
 const getTestOTP = (email: string): string | null =>
-  TEST_ACCOUNTS[email.toLowerCase()]?.otp || null;
+  TEST_ACCOUNTS[email.toLowerCase().trim()]?.otp || null;
 
 // Demo data for TestProjekt
 const generateDemoMessages = (productionId: string): Message[] => {
