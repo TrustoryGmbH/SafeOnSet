@@ -286,7 +286,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         return Math.max(0, 100 - (pseudoNegatives * 10));
     }
 
-    const dayMessages = localMessages.filter(m => m.date.split('T')[0] === dateString);
+    const dayMessages = localMessages.filter(m => m.date && m.date.split('T')[0] === dateString);
     const negativeCount = dayMessages.filter(m => m.score > 0).length;
     return Math.max(0, 100 - (negativeCount * 10));
   };
