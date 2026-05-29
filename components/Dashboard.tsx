@@ -2,13 +2,13 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { TRANSLATIONS } from '../constants';
-import { Language, Message, ShootDay, Production, UserGroup } from '../types';
+import { Language, Message, ShootDay } from '../types';
 import Smiley from './Smiley';
 import { generatePosterPDF } from '../services/pdfGenerator';
 import { 
-  Mail, FileText, Inbox, BarChart2, TrendingUp, AlertCircle, CheckCircle, 
-  AlertTriangle, X, Filter, Check, ShieldCheck, MessageSquare, ChevronDown, ChevronUp, Clock,
-  Plus, Trash2, Brain, ShieldAlert, Activity, Sparkles, Send
+  Mail, FileText, Inbox, BarChart2, AlertCircle, CheckCircle, 
+  AlertTriangle, X, Check, ChevronDown, ChevronUp, Clock,
+  Plus, Trash2
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
@@ -22,92 +22,91 @@ interface DashboardProps {
   productionName: string;
   productionId: string;
   isSandboxMode?: boolean;
-  userGroup?: UserGroup;
   productionStartDate?: string; // Optional: Wann die Produktion aktiviert wurde
 }
 
 const LOCAL_TRANS: Record<Language, any> = {
   de: {
-    inboxTitleFull: "Vertrauensstelle — Meldungen & Vorfälle",
-    inboxSubtitle: "Vertrauliche Meldungen vom Set in Echtzeit",
-    filterAll: "Alle Meldungen",
+    inboxTitleFull: "Sicherheits-Feedback & Vorfälle",
+    inboxSubtitle: "Meldungen und Stimmen am Filmset in Echtzeit",
+    filterAll: "Alle Stimmen",
     filterOpen: "Offene Vorfälle",
     filterResolved: "Erledigte Fälle",
-    filterNegative: "Nur Vorfallmeldungen anzeigen",
-    positiveDay: "Keine Vorfälle gemeldet 😊",
-    negativeDay: "Vorfall gemeldet 😓",
-    noText: "Keine Beschreibung (Check-In ohne Vorfall)",
+    filterNegative: "Nur negative Vorfälle anzeigen",
+    positiveDay: "Positiver Drehtag 😊",
+    negativeDay: "Kritischer Vorfall 😓",
+    noText: "Kein schriftlicher Kommentar (Einfache positive Stimme)",
     markResolved: "Als erledigt markieren",
     markOpen: "Als offen markieren",
-    emptyState: "Keine Meldungen für diese Filter-Auswahl.",
-    historyTitle: "Statistiken & Vorfallhistorie",
-    historySubtitle: "Tägliche Auswertung der Meldungen und Vorfälle",
+    emptyState: "Keine Feedback-Meldungen für diese Filter-Auswahl.",
+    historyTitle: "Statistiken & Drehtag-Historie",
+    historySubtitle: "Tägliche Auswertung der Stimmung und Vorfälle",
     dayScore: "Tagesscore",
-    allPositive: "Keine Vorfälle an diesem Tag",
-    incidentsReported: "Vorfall/Vorfälle gemeldet",
+    allPositive: "Ausschließlich positives Feedback",
+    incidentsReported: "kritische Meldung(en)",
     anonymous: "Anonym",
     resolvedPill: "Erledigt",
     openPill: "Offen",
-    showComments: "Details anzeigen",
-    hideComments: "Details ausblenden",
-    noCritOnDay: "Keine Vorfälle an diesem Tag gemeldet."
+    showComments: "Kommentare anzeigen",
+    hideComments: "Kommentare ausblenden",
+    noCritOnDay: "Keine kritischen Meldungen an diesem Tag."
   },
   en: {
-    inboxTitleFull: "Trust Office — Reports & Incidents",
-    inboxSubtitle: "Confidential reports from set in real-time",
-    filterAll: "All Reports",
+    inboxTitleFull: "Safety Feedback & Incidents",
+    inboxSubtitle: "Real-time crew feedback and reports",
+    filterAll: "All Feedback",
     filterOpen: "Open Incidents",
     filterResolved: "Resolved Cases",
-    filterNegative: "Only show incident reports",
-    positiveDay: "No incidents reported 😊",
-    negativeDay: "Incident reported 😓",
-    noText: "No description (Check-in without incident)",
+    filterNegative: "Only show negative incidents",
+    positiveDay: "Positive Shooting Day 😊",
+    negativeDay: "Critical Incident 😓",
+    noText: "No written comment (Simple positive vote)",
     markResolved: "Mark as Resolved",
     markOpen: "Mark as Open",
-    emptyState: "No reports matching this filter selection.",
-    historyTitle: "Statistics & Incident History",
-    historySubtitle: "Daily analysis of reports and incidents",
+    emptyState: "No feedback matching this filter selection.",
+    historyTitle: "Statistics & Shooting History",
+    historySubtitle: "Daily analysis of moods and reported incidents",
     dayScore: "Day Score",
-    allPositive: "No incidents on this day",
-    incidentsReported: "incident(s) reported",
+    allPositive: "100% positive feedback",
+    incidentsReported: "critical report(s)",
     anonymous: "Anonymous",
     resolvedPill: "Resolved",
     openPill: "Open",
-    showComments: "Show details",
-    hideComments: "Hide details",
-    noCritOnDay: "No incidents reported on this day."
+    showComments: "Show comments",
+    hideComments: "Hide comments",
+    noCritOnDay: "No critical reports on this day."
   },
   ar: {
-    inboxTitleFull: "مكتب الثقة — البلاغات والحوادث",
-    inboxSubtitle: "بلاغات سرية من موقع التصوير في الوقت الفعلي",
-    filterAll: "كل البلاغات",
+    inboxTitleFull: "ملاحظات السلامة والحوادث",
+    inboxSubtitle: "آراء الطاقم وتقاريرهم في الوقت الفعلي",
+    filterAll: "كل الآراء",
     filterOpen: "الحوادث المفتوحة",
     filterResolved: "الحالات المحلولة",
-    filterNegative: "إظهار بلاغات الحوادث فقط",
-    positiveDay: "لم يتم الإبلاغ عن أي حوادث 😊",
-    negativeDay: "تم الإبلاغ عن حادثة 😓",
-    noText: "لا يوجد وصف (تسجيل وصول بدون حادث)",
+    filterNegative: "إظهار الحوادث السلبية فقط",
+    positiveDay: "يوم تصوير إيجابي 😊",
+    negativeDay: "حادث حرج 😓",
+    noText: "لا توجد تعليقات مكتوبة (تصويت بسيط)",
     markResolved: "تحديد كمحلول",
     markOpen: "تحديد كمفتوح",
-    emptyState: "لا توجد بلاغات تطابق هذا التصفية.",
-    historyTitle: "الإحصائيات وسجل الحوادث",
-    historySubtitle: "التحليل اليومي للبلاغات والحوادث",
+    emptyState: "لا توجد تعليقات تطابق هذا التصفية.",
+    historyTitle: "الإحصائيات وتاريخ التصوير",
+    historySubtitle: "التحليل اليومي للمزاج والحوادث المبلغ عنها",
     dayScore: "نتيجة اليوم",
-    allPositive: "لا حوادث في هذا اليوم",
-    incidentsReported: "حادثة/حوادث مُبلّغ عنها",
+    allPositive: "تعليقات إيجابية بنسبة 100٪",
+    incidentsReported: "تقرير/تقارير حرجة",
     anonymous: "مجهول",
     resolvedPill: "محلول",
     openPill: "مفتوح",
-    showComments: "عرض التفاصيل",
-    hideComments: "إخفاء التفاصيل",
-    noCritOnDay: "لم يتم الإبلاغ عن حوادث في هذا اليوم."
+    showComments: "عرض التعليقات",
+    hideComments: "إخفاء التعليقات",
+    noCritOnDay: "لا توجد تقارير حرجة في هذا اليوم."
   }
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   lang, messages, schedule, 
   onOpenInbox, onOpenHistory, onOpenEmail, productionName, productionId, isSandboxMode = false,
-  userGroup = 1, productionStartDate
+  productionStartDate
 }) => {
   const t = TRANSLATIONS[lang];
   const lt = LOCAL_TRANS[lang] || LOCAL_TRANS['de'];
@@ -116,9 +115,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [activePopup, setActivePopup] = useState<'none' | 'pdf'>('none');
 
   // Modals inside state
-  const [activeModal, setActiveModal] = useState<'none' | 'inbox' | 'history' | 'schedule' | 'email-send'>('none');
-  const [emailSendAddress, setEmailSendAddress] = useState('');
-  const [emailSending, setEmailSending] = useState(false);
+  const [activeModal, setActiveModal] = useState<'none' | 'inbox' | 'history' | 'schedule'>('none');
   const [inboxFilter, setInboxFilter] = useState<'all' | 'open' | 'resolved'>('all');
   const [showOnlyNegative, setShowOnlyNegative] = useState<boolean>(true); // Startet direkt mit Fokus auf negative Feedbacks wie gewünscht
   
@@ -131,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [newDayNum, setNewDayNum] = useState<string>('');
   const [newDayDate, setNewDayDate] = useState<string>('');
   const [schedError, setSchedError] = useState<string | null>(null);
-  const [midTab] = useState<'ai-advisor'>('ai-advisor');
+
 
   useEffect(() => {
     setLocalMessages(messages);
@@ -544,39 +541,51 @@ const Dashboard: React.FC<DashboardProps> = ({
            <p className="text-[11px] text-slate-500 leading-relaxed">{explanation.text}</p>
         </div>
       </div>
-      {/* Middle: Premium Multi-Tab Workspace */}
+      {/* Middle: Premium Live Statistics Workspace */}
       <div className="flex flex-col border-r border-white/5 bg-slate-950/15">
         
-         {/* AI Advisor Header */}
-         <div className="border-b border-white/5 flex p-4 justify-between items-center bg-black/10">
+         {/* Premium Dashboard Header */}
+         <div className="border-b border-white/5 flex p-5 justify-between items-center bg-black/10">
            <div className="flex items-center gap-2">
-             <Brain size={14} className="text-indigo-400" />
-             <span className="text-[10px] font-black tracking-[0.15em] text-slate-400 uppercase">AI Set Risk Advisory</span>
-             <span className="relative flex items-center ml-1">
-               <span className="absolute w-2.5 h-2.5 bg-indigo-500 rounded-full animate-ping" />
-               <span className="w-2.5 h-2.5 bg-indigo-500 rounded-full border border-indigo-400" />
-             </span>
+             <BarChart2 size={16} className="text-blue-400" />
+             <span className="text-xs font-black tracking-[0.15em] text-slate-300 uppercase">Live Statistik</span>
            </div>
-           <div className="flex items-center gap-1 text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-              <Sparkles size={10} /> Smart Scan
+           <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
+              <span className="relative flex items-center h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Echtzeit
            </div>
          </div>
 
-         <div className="p-6 flex-1 overflow-y-auto flex flex-col gap-5 custom-scrollbar">
+         <div className="p-8 flex-1 overflow-y-auto flex flex-col justify-center gap-8 custom-scrollbar relative">
+           {/* Abstract Background Element */}
+           <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
            
-           {/* Risk + Satisfaction Cards */}
-           <div className="grid grid-cols-2 gap-3">
-             <div className={`p-4 rounded-2xl border transition-all ${
-               riskLevel === 'LOW' 
-                 ? 'bg-emerald-950/10 border-emerald-500/10' 
-                 : riskLevel === 'MEDIUM'
-                   ? 'bg-amber-950/10 border-amber-500/10'
-                   : 'bg-rose-950/10 border-rose-500/10 shadow-[0_0_15px_rgba(239,68,68,0.05)]'
-             }`}>
-               <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                 {lang === 'de' ? 'Risiko-Level' : 'Set Risk Level'}
+           {/* Core Statistics Cards */}
+           <div className="grid grid-cols-2 gap-4 relative z-10">
+             <div className="p-6 bg-slate-900/40 border border-white/5 rounded-[24px] flex flex-col items-center justify-center text-center shadow-lg backdrop-blur-md">
+               <span className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                 {lang === 'de' ? 'Gesamt-Zufriedenheit' : 'Overall Satisfaction'}
                </span>
-               <span className={`text-sm font-black uppercase tracking-wider ${
+               <div className="text-4xl font-black text-white tracking-tighter flex items-baseline gap-1">
+                 {satisfactionIndex}
+                 <span className="text-xl text-slate-500">%</span>
+               </div>
+             </div>
+             
+             <div className={`p-6 rounded-[24px] border flex flex-col items-center justify-center text-center shadow-lg backdrop-blur-md transition-all ${
+               riskLevel === 'LOW' 
+                 ? 'bg-emerald-950/20 border-emerald-500/20' 
+                 : riskLevel === 'MEDIUM'
+                   ? 'bg-amber-950/20 border-amber-500/20'
+                   : 'bg-rose-950/20 border-rose-500/20 shadow-[0_0_30px_rgba(239,68,68,0.1)]'
+             }`}>
+               <span className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                 {lang === 'de' ? 'Risiko-Level' : 'Risk Level'}
+               </span>
+               <div className={`text-2xl font-black uppercase tracking-wider ${
                  riskLevel === 'LOW' ? 'text-emerald-400' : riskLevel === 'MEDIUM' ? 'text-amber-400' : 'text-rose-400'
                }`}>
                  {riskLevel === 'LOW' 
@@ -585,100 +594,32 @@ const Dashboard: React.FC<DashboardProps> = ({
                      ? (lang === 'de' ? 'Erhöht' : 'Medium') 
                      : (lang === 'de' ? 'Kritisch' : 'Critical')
                  }
-               </span>
-             </div>
-             
-             <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-               <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                 {lang === 'de' ? 'Zufriedenheit' : 'Satisfaction'}
-               </span>
-               <span className="text-sm font-black text-white tracking-wider">{satisfactionIndex}%</span>
-             </div>
-           </div>
-
-           {/* Trend Summary */}
-           <div className="p-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-3">
-             <TrendingUp size={14} className="text-slate-500 flex-shrink-0" />
-             <p className="text-[11px] text-slate-400 leading-relaxed">
-               {(() => {
-                 const totalMsgs = localMessages.length;
-                 const negMsgs = localMessages.filter(m => m.score > 0).length;
-                 const openMsgs = localMessages.filter(m => m.score > 0 && !m.resolved).length;
-                 if (totalMsgs === 0) return lang === 'de' ? 'Noch keine Feedbacks vorhanden. Die Analyse startet automatisch.' : 'No feedback yet. Analysis starts automatically.';
-                 if (negMsgs === 0) return lang === 'de' ? `${totalMsgs} Feedbacks — alle positiv. Hervorragende Set-Atmosphäre.` : `${totalMsgs} feedbacks — all positive. Excellent set atmosphere.`;
-                 return lang === 'de' 
-                   ? `${totalMsgs} Feedbacks, davon ${negMsgs} negativ (${openMsgs} offen). ${openMsgs > 2 ? 'Sofortige Aufmerksamkeit empfohlen.' : 'Situation unter Kontrolle.'}`
-                   : `${totalMsgs} feedbacks, ${negMsgs} negative (${openMsgs} open). ${openMsgs > 2 ? 'Immediate attention recommended.' : 'Situation under control.'}`;
-               })()}
-             </p>
-           </div>
-
-           {/* Department Safety Overview */}
-           {departmentStats.length > 0 && (
-             <div>
-               <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3">
-                 {lang === 'de' ? 'Abteilungen' : 'Departments'}
-               </span>
-               <div className="space-y-2">
-                 {departmentStats.slice(0, 5).map((dept, i) => (
-                   <div key={i} className="flex items-center gap-3">
-                     <span className="text-xs w-5 text-center">{dept.icon}</span>
-                     <span className="text-[11px] font-bold text-slate-300 w-24 truncate">{dept.label}</span>
-                     <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                       <div className="h-full rounded-full transition-all duration-500" style={{ 
-                         width: `${dept.health}%`, 
-                         backgroundColor: dept.health >= 90 ? '#10b981' : dept.health >= 70 ? '#f59e0b' : '#ef4444' 
-                       }} />
-                     </div>
-                     <span className="text-[10px] font-bold text-slate-500 w-8 text-right">{dept.health}%</span>
-                     {dept.unresolvedNegatives > 0 && (
-                       <span className="px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[8px] font-black rounded">{dept.unresolvedNegatives}</span>
-                     )}
-                   </div>
-                 ))}
                </div>
              </div>
-           )}
+           </div>
 
-           {/* AI Recommendations */}
-           <div>
-             <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3">
-               {lang === 'de' ? 'Empfehlungen' : 'Recommendations'}
-             </span>
-             <div className="space-y-2.5">
-               {aiRecommendations.map((rec, i) => (
-                 <div key={i} className="p-3.5 bg-indigo-950/5 border border-indigo-500/10 rounded-xl flex gap-3">
-                   <div className="p-1.5 bg-indigo-500/10 rounded-lg h-fit border border-indigo-500/20 text-indigo-400">
-                     <ShieldAlert size={12} />
-                   </div>
-                   <p className="text-[11px] text-slate-400 leading-relaxed font-medium">{rec}</p>
-                 </div>
-               ))}
-             </div>
+           {/* Simple Status Message */}
+           <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-center text-center relative z-10">
+             <p className="text-xs text-slate-400 leading-relaxed font-medium">
+               {lang === 'de' 
+                 ? 'Die Live-Statistiken basieren auf allen bisher eingegangenen Feedbacks. Öffnen Sie die Inbox für Details.' 
+                 : 'Live statistics are based on all received feedback. Open the inbox for details.'}
+             </p>
            </div>
          </div>
 
-        <div className="p-6 border-t border-white/5 grid grid-cols-2 gap-3 bg-black/10">
+         <div className="p-6 border-t border-white/5 bg-black/10">
            <button 
              onClick={() => { onOpenInbox(); setActiveModal('inbox'); }} 
-             className="h-14 bg-slate-800/50 hover:bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all group"
+             className="w-full h-14 bg-slate-800/50 hover:bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all group shadow-lg"
            >
-             <Inbox size={16} className="text-slate-400 group-hover:text-rose-400" />
-             <span className="hidden sm:inline">{t.inbox}</span>
-             <span className="sm:hidden">Inbox</span>
+             <Inbox size={18} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
+             <span className="uppercase tracking-wider">{t.inbox}</span>
              {localMessages.filter(m => m.score > 0 && !m.resolved).length > 0 && (
-               <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">
-                 {localMessages.filter(m => m.score > 0 && !m.resolved).length}
+               <span className="bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse ml-2">
+                 {localMessages.filter(m => m.score > 0 && !m.resolved).length} OFFEN
                </span>
              )}
-           </button>
-           <button 
-             onClick={() => { onOpenHistory(); setActiveModal('history'); }} 
-             className="h-14 bg-slate-800/50 hover:bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all group"
-           >
-             <BarChart2 size={16} className="text-slate-400 group-hover:text-blue-400" />
-             <span className="hidden sm:inline">{t.viewStats}</span>
-             <span className="sm:hidden">Stats</span>
            </button>
          </div>
        </div>
@@ -708,41 +649,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               )}
             </div>
-            <button onClick={() => { setEmailSendAddress(''); setActiveModal('email-send'); }} className="h-12 bg-blue-600/20 border border-blue-500/20 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-blue-600/30 transition-all">
-              <Send size={16} className="text-blue-400" />
-              <span className="text-[8px] font-black uppercase tracking-widest text-blue-400">{lang === 'de' ? 'Versenden' : 'Send'}</span>
+            <button onClick={onOpenEmail} className="h-12 bg-slate-800/50 border border-white/10 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-all">
+              <Mail size={16} className="text-slate-400" />
+              <span className="text-[8px] font-black uppercase tracking-widest">{t.email}</span>
             </button>
         </div>
       </div>
-
-      {/* ================= SMART TREND ALERT ================= */}
-      {(() => {
-        const today = new Date().toISOString().split('T')[0];
-        const todayNegatives = localMessages.filter(m => m.score > 0 && m.date?.startsWith(today));
-        if (todayNegatives.length >= 3) {
-          return (
-            <div className="absolute bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom duration-300">
-              <div className="bg-rose-500/15 border border-rose-500/30 rounded-2xl p-4 flex items-center gap-4 backdrop-blur-md">
-                <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center flex-shrink-0 animate-pulse">
-                  <AlertTriangle size={20} className="text-rose-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-rose-300">
-                    {lang === 'de' ? `⚠️ Trend-Warnung: ${todayNegatives.length} negative Meldungen heute` : `⚠️ Trend Alert: ${todayNegatives.length} negative reports today`}
-                  </p>
-                  <p className="text-[10px] text-rose-400/80 mt-0.5">
-                    {lang === 'de' ? 'Erhöhte Aufmerksamkeit empfohlen. Prüfen Sie die Inbox.' : 'Elevated attention recommended. Check the inbox.'}
-                  </p>
-                </div>
-                <button onClick={() => { setActiveModal('inbox'); }} className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-xl text-xs font-bold text-rose-300 transition-all">
-                  Inbox
-                </button>
-              </div>
-            </div>
-          );
-        }
-        return null;
-      })()}
 
       {/* ================= INBOX MODAL ================= */}
       {activeModal === 'inbox' && (
@@ -826,10 +738,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 return filtered.map((m) => {
                   const isNeg = m.score > 0;
-                  const dateFormatted = new Date(m.date).toLocaleString(lang === 'de' ? 'de-DE' : 'en-US', {
+                  const dateFormatted = m.date ? new Date(m.date).toLocaleString(lang === 'de' ? 'de-DE' : 'en-US', {
                     day: '2-digit', month: '2-digit', year: 'numeric',
                     hour: '2-digit', minute: '2-digit'
-                  });
+                  }) : '—';
 
                   return (
                     <div 
@@ -974,7 +886,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             {/* Daily Breakdown List */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
               {trendDays.map((day) => {
-                const dayMsgs = localMessages.filter(m => m.date.split('T')[0] === day.date);
+                const dayMsgs = localMessages.filter(m => m.date && m.date.split('T')[0] === day.date);
                 const dayNegs = dayMsgs.filter(m => m.score > 0);
                 const isExpanded = !!expandedDays[day.date];
 
@@ -1068,7 +980,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div>
                 <h2 id="schedule-modal-title" className="text-xl font-extrabold text-white flex items-center gap-2">
                   <Clock className="text-blue-400" size={20} />
-                  {lang === 'de' ? 'Terminplaner' : 'Schedule Planner'}
+                  {lang === 'de' ? 'Drehtage- & Terminplaner' : 'Shoot Schedule Planner'}
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
                   {lang === 'de' 
@@ -1210,114 +1122,9 @@ const Dashboard: React.FC<DashboardProps> = ({
 
             {/* Modal Footer */}
             <div className="p-4 border-t border-white/5 bg-slate-950/20 text-center text-[10px] text-slate-500">
-              Safe on Set • Vertrauensstelle
+              Safe on Set • Drehtage- & Terminplaner
             </div>
 
-          </div>
-        </div>
-      )}
-
-      {/* ================= EMAIL SEND MODAL ================= */}
-      {activeModal === 'email-send' && (
-        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true">
-          <div className="bg-slate-900 border border-white/10 rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden">
-            
-            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-slate-950/20">
-              <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Send className="text-blue-400" size={18} />
-                  {lang === 'de' ? 'QR-Code & Poster versenden' : 'Send QR Code & Poster'}
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  {lang === 'de' ? 'An eine beliebige E-Mail-Adresse senden' : 'Send to any email address'}
-                </p>
-              </div>
-              <button onClick={() => setActiveModal('none')} className="p-1 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors font-bold text-sm">✕</button>
-            </div>
-
-            <div className="p-6">
-              <label htmlFor="send-email-input" className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                {lang === 'de' ? 'Empfänger E-Mail' : 'Recipient Email'}
-              </label>
-              <input
-                id="send-email-input"
-                type="email"
-                value={emailSendAddress}
-                onChange={(e) => setEmailSendAddress(e.target.value)}
-                placeholder="email@example.com"
-                className="w-full p-3.5 bg-black/20 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none text-white placeholder-slate-600 text-sm"
-                autoFocus
-              />
-
-              <div className="mt-4 p-3 bg-white/[0.03] border border-white/[0.05] rounded-xl">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">{lang === 'de' ? 'Inhalt der E-Mail' : 'Email contents'}</p>
-                <div className="flex items-center gap-2 text-xs text-slate-300 mb-1.5">
-                  <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center"><span className="text-[10px]">📱</span></div>
-                  {lang === 'de' ? 'QR-Code Link für die Produktion' : 'QR Code link for production'}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-300">
-                  <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center"><span className="text-[10px]">📄</span></div>
-                  {lang === 'de' ? 'PDF Poster zum Ausdrucken' : 'PDF poster for printing'}
-                </div>
-              </div>
-
-              <button
-                disabled={emailSending || !emailSendAddress.includes('@')}
-                onClick={async () => {
-                  setEmailSending(true);
-                  const qrUrl = getQrUrl();
-                  try {
-                    await fetch('/.netlify/functions/send-email', {
-                      method: 'POST',
-                      body: JSON.stringify({
-                        to: emailSendAddress,
-                        subject: `Safe on Set – QR-Code & Poster: ${productionName}`,
-                        html: `<div style="font-family: -apple-system, sans-serif; padding: 40px; text-align: center; background: #0f172a; color: white;">
-                          <h1 style="font-size: 24px; margin-bottom: 8px;">Safe on Set</h1>
-                          <p style="color: #94a3b8; margin-bottom: 32px;">${productionName}</p>
-                          <div style="background: white; border-radius: 16px; padding: 24px; display: inline-block; margin-bottom: 24px;">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}" width="200" height="200" alt="QR Code" style="display: block;" />
-                          </div>
-                          <p style="color: #64748b; font-size: 14px; margin-bottom: 24px;">Diesen QR-Code am Set aushängen. Crew-Mitglieder scannen ihn, um Feedback abzugeben.</p>
-                          <div style="margin-bottom: 16px;">
-                            <a href="${qrUrl}" style="background: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">QR-Code Link öffnen</a>
-                          </div>
-                          <p style="color: #334155; font-size: 11px; margin-top: 32px;">Tipp: Lade das PDF-Poster im Dashboard herunter (Button "PDF") und drucke es aus.</p>
-                          <p style="color: #1e293b; font-size: 10px; margin-top: 24px;">Safe on Set © 2026 • Trustory GmbH</p>
-                        </div>`
-                      })
-                    });
-                    alert(lang === 'de' ? `✅ E-Mail an ${emailSendAddress} gesendet!` : `✅ Email sent to ${emailSendAddress}!`);
-                    setActiveModal('none');
-                  } catch (err) {
-                    console.warn('Email send error:', err);
-                    // Fallback: Copy to clipboard
-                    try {
-                      await navigator.clipboard.writeText(qrUrl);
-                      alert(lang === 'de' 
-                        ? `E-Mail-Versand nicht verfügbar. QR-Link wurde in die Zwischenablage kopiert:\n${qrUrl}` 
-                        : `Email not available. QR link copied to clipboard:\n${qrUrl}`);
-                    } catch {
-                      alert(lang === 'de' ? `QR-Link: ${qrUrl}` : `QR Link: ${qrUrl}`);
-                    }
-                    setActiveModal('none');
-                  } finally {
-                    setEmailSending(false);
-                  }
-                }}
-                className={`w-full mt-5 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                  emailSending || !emailSendAddress.includes('@')
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-500 text-white active:scale-[0.98]'
-                }`}
-              >
-                {emailSending ? (
-                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {lang === 'de' ? 'Wird gesendet...' : 'Sending...'}</>
-                ) : (
-                  <><Send size={16} /> {lang === 'de' ? 'Jetzt versenden' : 'Send now'}</>
-                )}
-              </button>
-            </div>
           </div>
         </div>
       )}

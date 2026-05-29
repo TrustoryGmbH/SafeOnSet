@@ -1,7 +1,7 @@
 import React from 'react';
 import { Language, Production, UserGroup } from '../types';
 import { TRANSLATIONS } from '../constants';
-import { Building, ArrowRight, LogOut, Shield, User, Clock, CheckCircle, MessageSquare, AlertCircle, Plus } from 'lucide-react';
+import { Building, ArrowRight, LogOut, MessageSquare, AlertCircle, Plus } from 'lucide-react';
 
 interface DashboardHubProps {
   lang: Language;
@@ -32,6 +32,8 @@ const LOCAL_TRANS: Record<Language, any> = {
     groupBadge1: "Produktion",
     groupBadge2: "Supervisor",
     groupBadge3: "Vertrauensstelle",
+    emptyHint: "Falls du ein Projekt erwartest, stelle bitte sicher, dass dein Koordinator dich mit dieser E-Mail-Adresse eingetragen hat.",
+    emptyAction: "Neue Produktion anfordern",
   },
   en: {
     title: "Your Productions",
@@ -50,6 +52,8 @@ const LOCAL_TRANS: Record<Language, any> = {
     groupBadge1: "Production",
     groupBadge2: "Supervisor",
     groupBadge3: "Trust Office",
+    emptyHint: "If you expect a project here, please make sure your coordinator has registered you with this email address.",
+    emptyAction: "Request New Production",
   },
   ar: {
     title: "إنتاجاتك",
@@ -68,6 +72,8 @@ const LOCAL_TRANS: Record<Language, any> = {
     groupBadge1: "الإنتاج",
     groupBadge2: "المشرف",
     groupBadge3: "مكتب الثقة",
+    emptyHint: "إذا كنت تتوقع مشروعًا هنا، يرجى التأكد من أن المنسق الخاص بك قد سجلك بعنوان البريد الإلكتروني هذا.",
+    emptyAction: "طلب إنتاج جديد",
   }
 };
 
@@ -86,7 +92,7 @@ const DashboardHub: React.FC<DashboardHubProps> = ({
 
   // Filter productions based on user group
   const userProductions = productions.filter(p => {
-    const email_l = email.toLowerCase();
+    const email_l = email.toLowerCase().trim();
     if (userGroup === 3) {
       return p.trust_contacts?.some(tc => tc.email?.toLowerCase() === email_l);
     }
@@ -102,7 +108,7 @@ const DashboardHub: React.FC<DashboardHubProps> = ({
   });
 
   const getUserRole = (prod: Production) => {
-    const email_l = email.toLowerCase();
+    const email_l = email.toLowerCase().trim();
     if (userGroup === 3) return lh.roleTrust;
     if (userGroup === 2) return lh.roleSupervisor;
     if (prod.email?.toLowerCase() === email_l) return lh.roleCoordinator;
@@ -179,13 +185,15 @@ const DashboardHub: React.FC<DashboardHubProps> = ({
               <AlertCircle size={32} />
             </div>
             <h3 className="text-lg font-bold text-slate-300 mb-2">{lh.noProds}</h3>
-            <p className="text-xs text-slate-500 max-w-sm mb-8">Falls du ein Projekt erwartest, stelle bitte sicher, dass dein Koordinator dich mit dieser E-Mail-Adresse ({email}) eingetragen hat.</p>
-            <button 
-              onClick={onRegisterClick}
-              className="py-3 px-6 bg-slate-800 text-white rounded-xl text-xs font-bold border border-white/10 hover:bg-slate-700 transition-colors"
-            >
-              Neue Produktion anfordern
-            </button>
+            <p className="text-xs text-slate-500 max-w-sm mb-8">{lh.emptyHint} ({email})</p>
+            {userGroup !== 3 && (
+              <button 
+                onClick={onRegisterClick}
+                className="py-3 px-6 bg-slate-800 text-white rounded-xl text-xs font-bold border border-white/10 hover:bg-slate-700 transition-colors"
+              >
+                {lh.emptyAction}
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
